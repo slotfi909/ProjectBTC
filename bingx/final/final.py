@@ -7,10 +7,11 @@ api_key = "SbyekABHMR0SyrIQKTqU14sExh5m40sV5a6jaBenI26u5SDm8z4gGzQCLamCp6Ww2uJyV
 
 # prepairing pairs
 pairBTC = BTClib.Pair('BTC-USDT')
-pairETH = BTClib.Pair('ETH-USDT')
-pairs = [pairBTC, pairETH]
+pairGRT = BTClib.Pair('GRT-USDT')
+pairONDO = BTClib.Pair('ONDO-USDT')
+pairs = [pairBTC, pairGRT,pairONDO]
 
-interval = BTClib.Interval.MINUTELY_ONEMINUTE
+interval = BTClib.Interval.MINUTELY_THIRTYMINUTE
 
 ###############
 ##playground

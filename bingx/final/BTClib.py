@@ -6,17 +6,15 @@ import time
 from bingX.spot import types
 from enum import Enum
 ###
-DEBUG_MODE = True
+DEBUG_MODE = False
 ###
 ###############################
 #todo
-# edit code so it isnt exclusively for btc
 # add futures!
 # change functions to get interval as interval not interval.value
 # search for changing stdout to a file in python
 # ssh log when using python??
 # add max tries function for communication
-# can use only calibre time??
 # add audit
 # create code way more modular for strategy, each strategy is defined by 
 # certain rules, like condtion for three white soldier
@@ -212,12 +210,12 @@ def getPairHistoryAsDataFrame(bingx_client,pair,interval,start_time,end_time):
     # cdf.at[1,'bodyLen'] = 10
     # cdf.at[2,'bodyLen'] = 1
 #           # sell
-    cdf.at[0,'isGreen'] = 0.0
-    cdf.at[1,'isGreen'] = 0.0
-    cdf.at[2,'isGreen'] = 0.0
-    cdf.at[0,'bodyLen'] = 100
-    cdf.at[1,'bodyLen'] = 10
-    cdf.at[2,'bodyLen'] = 1
+    # cdf.at[0,'isGreen'] = 0.0
+    # cdf.at[1,'isGreen'] = 0.0
+    # cdf.at[2,'isGreen'] = 0.0
+    # cdf.at[0,'bodyLen'] = 100
+    # cdf.at[1,'bodyLen'] = 10
+    # cdf.at[2,'bodyLen'] = 1
 #     # engulfing
 #       # sell
     # cdf.at[0,'isGreen'] = 0.0
