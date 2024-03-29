@@ -8,6 +8,10 @@ pairs = ['BTC-USDT','ETH-USDT']
 interval = BTClib.Interval.HOURLY_ONEHOUR
 test = "BTC-USDT"
 
+###############
+##playground
+###############
+
 strategy = BTClib.Strategy.ENGULFING
 buy_percentage_current = BTClib.buy_percentage_init
 sell_percentage_current = BTClib.sell_percentage_init

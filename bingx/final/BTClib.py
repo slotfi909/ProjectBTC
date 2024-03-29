@@ -34,15 +34,29 @@ sellPositionsNumber = 0
 PAIR_MIN_TRADE_USDT = 5
 
 class Strategy(Enum):
-    THREESOLDIERS = 4
-    ENGULFING = 3
+    THREESOLDIERS = 3 + 1
+    ENGULFING = 2 + 1
     
 class Interval(Enum):
-    HOURLY_ONEHOUR = '1h'
-    HOURLY_FOURHOUR = '4h'
-    DAILY_ONEDAY = '1d'
+
     MINUTELY_ONEMINUTE = '1m'
+    MINUTELY_THREEMINUTE = '3m'
     MINUTELY_FIVEMINUTE = '5m'
+    MINUTELY_FIFTEENMINUTE = '15m'
+    MINUTELY_THIRTYMINUTE = '30m'
+
+    HOURLY_ONEHOUR = '1h'
+    HOURLY_TWOHOUR = '2h'
+    HOURLY_FOURHOUR = '4h'
+    HOURLY_SIXHOUR = '6h'
+    HOURLY_EIGHTHOUR = '8h'
+    HOURLY_TWELVEHOUR = '12h'
+
+    DAILY_ONEDAY = '1d'
+
+    WEEKLY_ONEWEEK = '1w'
+
+    MONTHLY_ONEMONTH = '1M'
 
     
 class Audit(Enum):
@@ -81,18 +95,27 @@ def getIntervalAsMiliSeconds(interval):
     oneMinuteAsMiliSeconds = 1 * 60 * 1000
     oneHourAsMiliSeconds = 60 * oneMinuteAsMiliSeconds
     oneDayAsMiliSeconds = 24 * oneHourAsMiliSeconds
+    oneWeekAsMiliSeconds = 7 * oneDayAsMiliSeconds
+    oneMonthAsMiliSeconds = 30 * oneDayAsMiliSeconds
 
-    # resume with prefix and suffin
-    if interval == Interval.HOURLY_ONEHOUR.value:
-        timeOffset = int(Interval.HOURLY_ONEHOUR.value[])
-    if interval == Interval.HOURLY_FOURHOUR.value:
-        timeOffset = 4 * 60 * 60 * 1000
-    if interval == Interval.DAILY_ONEDAY.value:
-        timeOffset = 24 * 60 * 60 * 1000
-    if interval == Interval.MINUTELY_ONEMINUTE.value:
-        timeOffset = 60 * 1000
-    if interval == Interval.MINUTELY_FIVEMINUTE.value:
-        timeOffset = 5 * 60 * 1000
+    VALID_INTERVALS = ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"]
+    if interval not in VALID_INTERVALS:
+            raise ValueError("[!] INVALID INTERVAL VALUE. Valid Intervals are: ", str(VALID_INTERVALS))
+
+
+    interval_prefix = int(interval[:len(interval) - 1])
+    interval_suffix = interval[-1]
+
+    if interval_suffix == 'm':
+        timeOffset = interval_prefix * oneMinuteAsMiliSeconds
+    elif interval_suffix == 'h':
+        timeOffset = interval_prefix * oneHourAsMiliSeconds
+    elif interval_suffix == 'd':
+        timeOffset = interval_prefix * oneDayAsMiliSeconds
+    elif interval_suffix == 'w':
+        timeOffset = interval_prefix * oneWeekAsMiliSeconds
+    elif interval_suffix == 'M':
+        timeOffset = interval_prefix * oneMonthAsMiliSeconds
 
     return timeOffset
 
