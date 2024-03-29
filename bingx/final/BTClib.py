@@ -5,6 +5,9 @@ from bingX import BingX
 import time
 from bingX.spot import types
 from enum import Enum
+###
+DEBUG_MODE = True
+###
 ###############################
 #todo
 # edit code so it isnt exclusively for btc
@@ -18,12 +21,10 @@ from enum import Enum
 # create code way more modular for strategy, each strategy is defined by 
 # certain rules, like condtion for three white soldier
 ###############################
-###
-DEBUG_MODE = True
-###
+
 engulfing_body_condition = 2
 engulfing_first_candle_color_dont_care = True
-threesoldiers_body_condition = [1,1]
+threesoldiers_body_condition = [1.01,1.02]
 
 communication_max_tries = 5
 buy_percentage_init = 10
@@ -33,10 +34,52 @@ buyPositionsNumber = 0
 sellPositionsNumber = 0
 PAIR_MIN_TRADE_USDT = 5
 
+        
+
 class Strategy(Enum):
     THREESOLDIERS = 3 + 1
     ENGULFING = 2 + 1
-    
+
+class Pair:
+    # attributes
+        # pairName: str
+        # buy_percentage_current: float
+        # sell_percentage_current: float
+        # strategies: list (contains multiple Strategy)
+
+    def __init__(self) -> None:
+        self.buy_percentage_current = buy_percentage_init
+        self.sell_percentage_current = sell_percentage_init
+        self.strategies = [Strategy.ENGULFING, Strategy.THREESOLDIERS]
+
+    def __init__(self, pairName: str) -> None:
+        self.pairName = pairName
+        self.buy_percentage_current = buy_percentage_init
+        self.sell_percentage_current = sell_percentage_init
+        self.strategies = [Strategy.ENGULFING, Strategy.THREESOLDIERS]
+
+    def setPairName(self,pairName: str) -> None:
+        self.pairName = pairName
+
+    def setStrategies(self, strategies: list) -> None:
+        self.strategies = strategies
+
+    def appendStrategies(self, strategy: Strategy) -> None:
+        self.strategies.append(strategy)
+
+    def setBuyPercentage(self, new_buy_percentage: float) -> None:
+        self.buy_percentage_current = new_buy_percentage
+
+    def setSellPercentage(self, new_sell_percentage: float) -> None:
+        self.sell_percentage_current = new_sell_percentage
+
+    def clearStrategies(self) -> None:
+        self.strategies = []
+    def popStrategy(self) -> None:
+        assert len(self.strategies > 0), 'strategies does not have any member!'
+        self.strategies.pop()
+
+
 class Interval(Enum):
 
     MINUTELY_ONEMINUTE = '1m'
@@ -63,7 +106,7 @@ class Audit(Enum):
     WEEKLY = 1
     MONTHLY = 2
 
-def get_account_info(bingx_client,pair) -> float | np.longdouble:
+def get_account_info(bingx_client,pair: str) -> float | np.longdouble:
     for index in range(len(pair)):
         if pair[index] == '-':
             dash_index = index
@@ -83,7 +126,7 @@ def get_account_info(bingx_client,pair) -> float | np.longdouble:
     print(f'pair balance: {pair_balance}')
     return usdt_balance, pair_balance
 
-def update_balance_info(bingx_client,pair,interval,usdt_balance,pair_balance: np.longdouble) -> float | float:
+def update_balance_info(bingx_client,pair: str,interval,usdt_balance,pair_balance: np.longdouble) -> float | float:
     res = bingx_client.perpetual_v2.market.get_k_line_data(pair,interval)
     pair_balance_as_usdt = pair_balance * float(res['close'])
     print(f'pair_balance_as_usdt: {pair_balance_as_usdt}')
@@ -169,12 +212,12 @@ def getPairHistoryAsDataFrame(bingx_client,pair,interval,start_time,end_time):
     # cdf.at[1,'bodyLen'] = 10
     # cdf.at[2,'bodyLen'] = 1
 #           # sell
-    # cdf.at[0,'isGreen'] = 0.0
-    # cdf.at[1,'isGreen'] = 0.0
-    # cdf.at[2,'isGreen'] = 0.0
-    # cdf.at[0,'bodyLen'] = 100
-    # cdf.at[1,'bodyLen'] = 10
-    # cdf.at[2,'bodyLen'] = 1
+    cdf.at[0,'isGreen'] = 0.0
+    cdf.at[1,'isGreen'] = 0.0
+    cdf.at[2,'isGreen'] = 0.0
+    cdf.at[0,'bodyLen'] = 100
+    cdf.at[1,'bodyLen'] = 10
+    cdf.at[2,'bodyLen'] = 1
 #     # engulfing
 #       # sell
     # cdf.at[0,'isGreen'] = 0.0
@@ -189,37 +232,82 @@ def getPairHistoryAsDataFrame(bingx_client,pair,interval,start_time,end_time):
     
     return cdf
 
+class StrategyChecker:
+    class ENGLUFING:
+        def __init__(self) -> None:
+            self.suitableForBuy = False
+            self.suitableForSell = False
+
+        def checkData(self,cdf) -> bool | bool:
+            if cdf.loc[0]['isGreen'] == 0.0:
+                if cdf.loc[1]['isGreen'] == 1.0 or engulfing_first_candle_color_dont_care:
+                        if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
+                            self.suitableForSell = True
+                
+            if cdf.loc[0]['isGreen'] == 1.0:
+                if cdf.loc[1]['isGreen'] == 0.0 or engulfing_first_candle_color_dont_care:
+                        if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
+                            self.suitableForBuy = True 
+            
+            return self.suitableForBuy, self.suitableForSell
+
+    class THREESOLDIERS:
+        def __init__(self) -> None:
+            self.suitableForBuy = False
+            self.suitableForSell = False
+        def checkData(self,cdf) -> bool | bool:
+            if cdf.loc[0]['isGreen'] == 1.0:
+                if cdf.loc[1]['isGreen'] == 1.0:
+                    if cdf.loc[2]['isGreen'] == 1.0:
+                        if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= threesoldiers_body_condition[1]:
+                            if cdf.loc[1]['bodyLen'] / cdf.loc[2]['bodyLen'] >= threesoldiers_body_condition[0]:
+                                self.suitableForBuy = True
+                    
+            if cdf.loc[0]['isGreen'] == 0.0:
+                if cdf.loc[1]['isGreen'] == 0.0:
+                    if cdf.loc[2]['isGreen'] == 0.0:
+                        if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= threesoldiers_body_condition[1]:
+                            if cdf.loc[1]['bodyLen'] / cdf.loc[2]['bodyLen'] >= threesoldiers_body_condition[0]:
+                                self.suitableForSell = True
+
+            return self.suitableForBuy, self.suitableForSell
+            
+        
+            
 def checkPosition(cdf,strategy,interval):
-    suitableForBuy = False
-    suitableForSell = False
+    # suitableForBuy = False
+    # suitableForSell = False
     
     if strategy == Strategy.THREESOLDIERS.value:
-
-        if cdf.loc[0]['isGreen'] == 1.0:
-            if cdf.loc[1]['isGreen'] == 1.0:
-                if cdf.loc[2]['isGreen'] == 1.0:
-                    if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= threesoldiers_body_condition[1]:
-                        if cdf.loc[1]['bodyLen'] / cdf.loc[2]['bodyLen'] >= threesoldiers_body_condition[0]:
-                            suitableForBuy = True
+        strategyChecker = StrategyChecker.THREESOLDIERS()
+        suitableForBuy, suitableForSell = strategyChecker.checkData(cdf)
+        
+        # if cdf.loc[0]['isGreen'] == 1.0:
+        #     if cdf.loc[1]['isGreen'] == 1.0:
+        #         if cdf.loc[2]['isGreen'] == 1.0:
+        #             if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= threesoldiers_body_condition[1]:
+        #                 if cdf.loc[1]['bodyLen'] / cdf.loc[2]['bodyLen'] >= threesoldiers_body_condition[0]:
+        #                     suitableForBuy = True
                 
-        if cdf.loc[0]['isGreen'] == 0.0:
-            if cdf.loc[1]['isGreen'] == 0.0:
-                if cdf.loc[2]['isGreen'] == 0.0:
-                    if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= threesoldiers_body_condition[1]:
-                        if cdf.loc[1]['bodyLen'] / cdf.loc[2]['bodyLen'] >= threesoldiers_body_condition[0]:
-                            suitableForSell = True
+        # if cdf.loc[0]['isGreen'] == 0.0:
+        #     if cdf.loc[1]['isGreen'] == 0.0:
+        #         if cdf.loc[2]['isGreen'] == 0.0:
+        #             if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= threesoldiers_body_condition[1]:
+        #                 if cdf.loc[1]['bodyLen'] / cdf.loc[2]['bodyLen'] >= threesoldiers_body_condition[0]:
+        #                     suitableForSell = True
                             
     if strategy == Strategy.ENGULFING.value:
-        
-        if cdf.loc[0]['isGreen'] == 0.0:
-            if cdf.loc[1]['isGreen'] == 1.0 or engulfing_first_candle_color_dont_care:
-                    if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
-                        suitableForSell = True
+        strategyChecker = StrategyChecker.ENGLUFING()
+        suitableForBuy, suitableForSell = strategyChecker.checkData(cdf)
+        # if cdf.loc[0]['isGreen'] == 0.0:
+        #     if cdf.loc[1]['isGreen'] == 1.0 or engulfing_first_candle_color_dont_care:
+        #             if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
+        #                 suitableForSell = True
                 
-        if cdf.loc[0]['isGreen'] == 1.0:
-            if cdf.loc[1]['isGreen'] == 0.0 or engulfing_first_candle_color_dont_care:
-                    if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
-                        suitableForBuy = True 
+        # if cdf.loc[0]['isGreen'] == 1.0:
+        #     if cdf.loc[1]['isGreen'] == 0.0 or engulfing_first_candle_color_dont_care:
+        #             if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
+        #                 suitableForBuy = True 
     
     print(f'suitableForBuy: {suitableForBuy}')
     print(f'suitableForSell: {suitableForSell}')
