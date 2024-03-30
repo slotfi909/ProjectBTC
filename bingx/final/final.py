@@ -27,11 +27,11 @@ while(True):
 
         print(f"\nnew try at {time.ctime(time.time())} for pair {pair.pairName}:\n")
 
-        usdt_balance, pair_balance = BTClib.get_account_info(bingx_client,pair.pairName)
-
-        pair_balance_as_usdt, total_balance = BTClib.update_balance_info(bingx_client,pair.pairName,interval.value,usdt_balance,pair_balance)
-
         for strategy in pair.strategies:
+
+            usdt_balance, pair_balance = BTClib.get_account_info(bingx_client,pair.pairName)
+
+            pair_balance_as_usdt, total_balance = BTClib.update_balance_info(bingx_client,pair.pairName,interval.value,usdt_balance,pair_balance)
 
             start_time, end_time,intervalAsMillisecond = BTClib.get_times(strategy.value,interval.value)
 

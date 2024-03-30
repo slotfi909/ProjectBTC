@@ -9,7 +9,8 @@ from enum import Enum
 DEBUG_MODE = False
 ###
 ###############################
-#todo
+# todo
+# two successive trade can result in damage -> need to pull acc info again
 # add futures!
 # change functions to get interval as interval not interval.value
 # search for changing stdout to a file in python
