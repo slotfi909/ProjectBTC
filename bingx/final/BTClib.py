@@ -5,12 +5,20 @@ from bingX import BingX
 import time
 from bingX.spot import types
 from enum import Enum
+from datetime import date
+import sys
 ###
-DEBUG_MODE = False
+DEBUG_MODE = True
+old_date = ''
+logFile = ''
 ###
 ###############################
 # todo
-# two successive trade can result in damage -> need to pull acc info again
+# total usdt is wrong if multiple currencies exist
+# add log for each day
+# add stop price for market trades
+# add buy% and sell % in constractor of pair
+# add file to read pais from it
 # add futures!
 # change functions to get interval as interval not interval.value
 # search for changing stdout to a file in python
@@ -20,6 +28,7 @@ DEBUG_MODE = False
 # create code way more modular for strategy, each strategy is defined by 
 # certain rules, like condtion for three white soldier
 ###############################
+
 
 engulfing_body_condition = 2
 engulfing_first_candle_color_dont_care = True
@@ -74,6 +83,7 @@ class Pair:
 
     def clearStrategies(self) -> None:
         self.strategies = []
+
     def popStrategy(self) -> None:
         assert len(self.strategies > 0), 'strategies does not have any member!'
         self.strategies.pop()
@@ -105,7 +115,52 @@ class Audit(Enum):
     WEEKLY = 1
     MONTHLY = 2
 
-def get_account_info(bingx_client,pair: str) -> float | np.longdouble:
+def readPairsFromFile(fileAddress: str) -> list:
+    pairsFile = open(fileAddress, 'r')
+    pairs_str = pairsFile.readlines()
+    pairs = []
+    for pair_str in pairs_str:
+        stripped = pair_str.strip()
+        pairs.append(Pair(stripped))
+
+    return pairs
+
+def saveToLogs():
+    global old_date, logFile
+
+    new_date = date.today()
+    if old_date == '':
+        old_date = new_date
+        logFile = open(f'./logs/log-{new_date}.txt','a')
+
+    elif old_date != new_date:
+        logFile.close()
+        old_date = new_date
+        logFile = open(f'./logs/log-{new_date}.txt','a')
+        
+    sys.stdout = logFile
+
+
+
+def get_total_balance(bingx_client) -> float:
+    total_balance = float(0)
+    res = bingx_client.spot.trade.get_assets()
+    for record in res['balances']:
+        currency_name = record['asset']
+        if currency_name == 'USDT':
+            total_balance += float(record['free'])
+            continue
+        if currency_name == 'VST':
+            continue
+        pairName = currency_name + '-USDT'
+        klineData = bingx_client.perpetual_v2.market.get_k_line_data(pairName,Interval.MINUTELY_ONEMINUTE.value)
+        pair_lastPrice = float(klineData['close'])
+        total_balance += float(record['free']) * pair_lastPrice
+    
+    return total_balance
+
+
+def get_account_info(bingx_client: BingX,pair: str) -> float | np.longdouble:
     for index in range(len(pair)):
         if pair[index] == '-':
             dash_index = index
@@ -125,13 +180,11 @@ def get_account_info(bingx_client,pair: str) -> float | np.longdouble:
     print(f'pair balance: {pair_balance}')
     return usdt_balance, pair_balance
 
-def update_balance_info(bingx_client,pair: str,interval,usdt_balance,pair_balance: np.longdouble) -> float | float:
-    res = bingx_client.perpetual_v2.market.get_k_line_data(pair,interval)
+def get_pair_value(bingx_client: BingX,pair: str,usdt_balance,pair_balance: np.longdouble) -> float | float:
+    res = bingx_client.perpetual_v2.market.get_k_line_data(pair,Interval.MINUTELY_ONEMINUTE.value)
     pair_balance_as_usdt = pair_balance * float(res['close'])
     print(f'pair_balance_as_usdt: {pair_balance_as_usdt}')
-    total_balance = usdt_balance + pair_balance_as_usdt
-    print(f'total balance: {total_balance}')
-    return pair_balance_as_usdt, total_balance
+    return pair_balance_as_usdt
 
 def getIntervalAsMiliSeconds(interval):
     oneMinuteAsMiliSeconds = 1 * 60 * 1000
@@ -320,7 +373,7 @@ def calculateAmount(total_balance,usdt,current_price,trade_percentage_current):
     return amount
 
     
-def buyPair(bingx_client,pair,interval,total_balance,usdt_balance,buy_percentage_current):
+def buyPair(bingx_client: BingX,pair,interval,total_balance,usdt_balance,buy_percentage_current):
     global buyPositionsNumber,PAIR_MIN_TRADE_USDT
     print("\033[92m \033[1m{}\033[00m" .format(f"buy opportunity!\n"))
 
