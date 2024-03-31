@@ -20,7 +20,7 @@ interval = BTClib.Interval.MINUTELY_THIRTYMINUTE
 bingx_client = BTClib.BingX(api_key=api_key, secret_key=secret_key)
 while(True):
     
-    # BTClib.saveToLogs()
+    BTClib.saveToLogs()
 
     BTClib.calibreTime(interval.value)
 

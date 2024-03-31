@@ -429,6 +429,6 @@ def calibreTime(interval):
     print(f'need to sleep {sleep_time:.2f} miliseconds ({sleep_time / 1e3 // 60} minutes\
  and {(sleep_time / 1e3) % 60:.2f} seconds) to get in line with correct time!')
     print('\nsleeping...\n')
-    print('===========================')
-    print('===========================')
+    print('======================================================')
+    print('======================================================')
     time.sleep(sleep_time / 1e3)
