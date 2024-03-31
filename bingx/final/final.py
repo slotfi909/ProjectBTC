@@ -10,7 +10,7 @@ api_key = "SbyekABHMR0SyrIQKTqU14sExh5m40sV5a6jaBenI26u5SDm8z4gGzQCLamCp6Ww2uJyV
 pairs = BTClib.readPairsFromFile('./pairs.txt')
 
 # set interval
-interval = BTClib.Interval.MINUTELY_ONEMINUTE
+interval = BTClib.Interval.MINUTELY_THIRTYMINUTE
 
 ###############
 ##playground

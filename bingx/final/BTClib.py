@@ -8,7 +8,7 @@ from enum import Enum
 from datetime import date
 import sys
 ###
-DEBUG_MODE = True
+DEBUG_MODE = False
 old_date = ''
 logFile = ''
 ###
