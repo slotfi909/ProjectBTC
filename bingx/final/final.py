@@ -12,12 +12,11 @@ pairs = BTClib.readPairsFromFile('./pairs.txt')
 # set interval
 interval = BTClib.Interval.MINUTELY_THIRTYMINUTE
 
+bingx_client = BTClib.BingX(api_key=api_key, secret_key=secret_key)
+
 ###############
 ##playground
 ###############
-
-
-bingx_client = BTClib.BingX(api_key=api_key, secret_key=secret_key)
 while(True):
     
     BTClib.saveToLogs()
@@ -41,7 +40,7 @@ while(True):
 
             start_time, end_time,intervalAsMillisecond = BTClib.get_times(strategy.value,interval.value)
 
-            cdf = BTClib.getPairHistoryAsDataFrame(bingx_client,pair.pairName,interval.value,start_time,end_time)
+            cdf = BTClib.getPairHistoryAsDataFrame(bingx_client,pair.pairName,interval.value,start_time,end_time,strategy.value)
 
             print(f'\ncurrent pair data for strategy {strategy}:\n{cdf}\n')
 

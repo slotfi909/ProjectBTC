@@ -142,7 +142,7 @@ def saveToLogs():
 
 
 
-def get_total_balance(bingx_client) -> float:
+def get_total_balance(bingx_client: BingX) -> float:
     total_balance = float(0)
     res = bingx_client.spot.trade.get_assets()
     for record in res['balances']:
@@ -153,8 +153,9 @@ def get_total_balance(bingx_client) -> float:
         if currency_name == 'VST':
             continue
         pairName = currency_name + '-USDT'
-        klineData = bingx_client.perpetual_v2.market.get_k_line_data(pairName,Interval.MINUTELY_ONEMINUTE.value)
-        pair_lastPrice = float(klineData['close'])
+        klineData = bingx_client.spot.market.get_k_line_data(pairName,Interval.MINUTELY_ONEMINUTE.value)
+        # pair_lastPrice = float(klineData['close'])
+        pair_lastPrice = float(klineData[0][1])
         total_balance += float(record['free']) * pair_lastPrice
     
     return total_balance
@@ -181,8 +182,9 @@ def get_account_info(bingx_client: BingX,pair: str) -> float | np.longdouble:
     return usdt_balance, pair_balance
 
 def get_pair_value(bingx_client: BingX,pair: str,usdt_balance,pair_balance: np.longdouble) -> float | float:
-    res = bingx_client.perpetual_v2.market.get_k_line_data(pair,Interval.MINUTELY_ONEMINUTE.value)
-    pair_balance_as_usdt = pair_balance * float(res['close'])
+    res = bingx_client.spot.market.get_k_line_data(pair,Interval.MINUTELY_ONEMINUTE.value)
+    # pair_balance_as_usdt = pair_balance * float(res['close'])
+    pair_balance_as_usdt = pair_balance * res[0][1]
     print(f'pair_balance_as_usdt: {pair_balance_as_usdt}')
     return pair_balance_as_usdt
 
@@ -225,19 +227,24 @@ def get_times(strategy,interval):
     print(f'\tcurrent interval -> {interval}')
     return start_time, end_time,timeOffset
 
-def getPairHistoryAsDataFrame(bingx_client,pair,interval,start_time,end_time):
-    klineDataHistory = bingx_client.perpetual_v2.market.get_k_line_data(pair,interval,start_time,end_time)
+def getPairHistoryAsDataFrame(bingx_client: BingX,pair: str,interval,start_time,end_time,strategy):
+    klineDataHistory = bingx_client.spot.market.get_k_line_data(pair,interval,start_time,end_time,strategy)
     import warnings
     warnings.filterwarnings('ignore')
 
     df = pd.DataFrame(klineDataHistory)
-    cdf = df.iloc[::-1]
+    # cdf = df.iloc[::-1]
 
-    cdf['open'] = pd.to_numeric(cdf['open'])
-    cdf['high'] = pd.to_numeric(cdf['high'])
-    cdf['low'] = pd.to_numeric(cdf['low'])
-    cdf['close'] = pd.to_numeric(cdf['close'])
-
+    # cdf['open'] = pd.to_numeric(cdf['open'])
+    # cdf['high'] = pd.to_numeric(cdf['high'])
+    # cdf['low'] = pd.to_numeric(cdf['low'])
+    # cdf['close'] = pd.to_numeric(cdf['close'])
+    ###
+    del df[6],df[7]
+    df.columns = ['time','open','high','low','close','volume']
+    cdf = df.drop(0) if len(df) == strategy else df
+    # cdf = df
+    ###
     cdf['isGreen'] = cdf["close"]
     cdf['bodyLen'] = abs(cdf["close"] - cdf["open"])
 
@@ -378,8 +385,9 @@ def buyPair(bingx_client: BingX,pair,interval,total_balance,usdt_balance,buy_per
     print("\033[92m \033[1m{}\033[00m" .format(f"buy opportunity!\n"))
 
     buyPositionsNumber += 1
-    res = bingx_client.perpetual_v2.market.get_k_line_data(pair,interval)
-    last_price = float(res['close'])
+    res = bingx_client.spot.market.get_k_line_data(pair,interval)
+    # last_price = float(res['close'])
+    last_price = res[0][1]
     amountToBuy = calculateAmount(total_balance,usdt_balance,last_price,buy_percentage_current)
        
     if amountToBuy * last_price > PAIR_MIN_TRADE_USDT:
@@ -397,13 +405,14 @@ def buyPair(bingx_client: BingX,pair,interval,total_balance,usdt_balance,buy_per
             return 0, buy_percentage_current
         
 
-def sellPair(bingx_client,pair,interval,total_balance,pair_balance,sell_percentage_current):
+def sellPair(bingx_client: BingX,pair,interval,total_balance,pair_balance,sell_percentage_current):
     global sellPositionsNumber,PAIR_MIN_TRADE_USDT,DEBUG_MODE
     print("\033[92m \033[1m{}\033[00m" .format(f"sell opportunity!\n"))  
 
     print(f'current sell percentage: {sell_percentage_current}')
-    res = bingx_client.perpetual_v2.market.get_k_line_data(pair,interval)
-    last_price = float(res['close'])
+    res = bingx_client.spot.market.get_k_line_data(pair,interval)
+    # last_price = float(res['close'])
+    last_price = res[0][1]
     pair_value_as_usdt = pair_balance * last_price
     amountToSell = calculateAmount(total_balance,pair_value_as_usdt,last_price,sell_percentage_current)
 
