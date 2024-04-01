@@ -139,6 +139,7 @@ def saveToLogs():
         logFile = open(f'./logs/log-{new_date}.txt','a')
         
     sys.stdout = logFile
+    sys.stderr = logFile
 
 
 
