@@ -441,4 +441,5 @@ def calibreTime(interval):
     print('\nsleeping...\n')
     print('======================================================')
     print('======================================================')
+    sys.stdout.flush()
     time.sleep(sleep_time / 1e3)
