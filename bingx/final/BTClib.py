@@ -37,7 +37,8 @@ threesoldiers_body_condition = [1.01,1.02]
 communication_max_tries = 5
 buy_percentage_init = 10
 sell_percentage_init = 13
-learning_rate = 1.3
+learning_rate_buy = 0.9
+learning_rate_sell = 1.2
 buyPositionsNumber = 0
 sellPositionsNumber = 0
 PAIR_MIN_TRADE_USDT = 5
@@ -398,7 +399,7 @@ def buyPair(bingx_client: BingX,pair,interval,total_balance,usdt_balance,buy_per
         print(f'created order: {order.to_dict()}')
         if DEBUG_MODE == False:
            res = bingx_client.spot.trade.create_order(order)
-        buy_percentage_current *= learning_rate
+        buy_percentage_current *= learning_rate_buy
         return res, buy_percentage_current
 
     else:
@@ -423,7 +424,7 @@ def sellPair(bingx_client: BingX,pair,interval,total_balance,pair_balance,sell_p
         print(f'created order: {order.to_dict()}')
         if DEBUG_MODE == False:
             res = bingx_client.spot.trade.create_order(order)
-        sell_percentage_current *= learning_rate
+        sell_percentage_current *= learning_rate_sell
         return res, sell_percentage_current
     else:
             print("\tpair balance lower than minumum for selling!")
