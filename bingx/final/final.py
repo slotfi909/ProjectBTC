@@ -10,7 +10,7 @@ api_key = "SbyekABHMR0SyrIQKTqU14sExh5m40sV5a6jaBenI26u5SDm8z4gGzQCLamCp6Ww2uJyV
 pairs = BTClib.readPairsFromFile('./pairs.txt')
 
 # set interval
-interval = BTClib.Interval.MINUTELY_THIRTYMINUTE
+interval = BTClib.Interval.HOURLY_ONEHOUR
 
 bingx_client = BTClib.BingX(api_key=api_key, secret_key=secret_key)
 
@@ -21,7 +21,7 @@ while(True):
     
     BTClib.saveToLogs()
 
-    BTClib.calibreTime(interval.value)
+    BTClib.calibreTime(interval)
 
     for pair in pairs:
 
@@ -32,28 +32,28 @@ while(True):
 
             if balances_changed:
 
-                usdt_balance, pair_balance = BTClib.get_account_info(bingx_client,pair.pairName)
+                usdt_balance, pair_balance = BTClib.get_account_info(bingx_client,pair)
 
-                pair_balance_as_usdt = BTClib.get_pair_value(bingx_client,pair.pairName,usdt_balance,pair_balance)
+                pair_balance_as_usdt = BTClib.get_pair_value(bingx_client,pair,usdt_balance,pair_balance)
 
             total_balance = BTClib.get_total_balance(bingx_client)
 
-            start_time, end_time,intervalAsMillisecond = BTClib.get_times(strategy.value,interval.value)
+            start_time, end_time,intervalAsMillisecond = BTClib.get_times(strategy,interval)
 
-            cdf = BTClib.getPairHistoryAsDataFrame(bingx_client,pair.pairName,interval.value,start_time,end_time,strategy.value)
+            cdf = BTClib.getPairHistoryAsDataFrame(bingx_client,pair,interval,start_time,end_time,strategy)
 
             print(f'\ncurrent pair data for strategy {strategy}:\n{cdf}\n')
 
-            suitableForBuy, suitableForSell = BTClib.checkPosition(cdf,strategy.value,interval.value)
+            suitableForBuy, suitableForSell = BTClib.checkPosition(cdf,strategy)
 
             res = 0
             balances_changed = False
             if suitableForBuy:
-                res, pair.buy_percentage_current = BTClib.buyPair(bingx_client,pair.pairName,interval.value,total_balance,usdt_balance,pair.buy_percentage_current)
+                res, pair.buy_percentage_current = BTClib.buyPair(bingx_client,pair,interval,total_balance,usdt_balance)
                 balances_changed = True
 
             if suitableForSell:
-                res, pair.sell_percentage_current = BTClib.sellPair(bingx_client,pair.pairName,interval.value,total_balance,pair_balance,pair.sell_percentage_current)
+                res, pair.sell_percentage_current = BTClib.sellPair(bingx_client,pair,interval,total_balance,pair_balance)
                 balances_changed = True
 
             if res != 0:
