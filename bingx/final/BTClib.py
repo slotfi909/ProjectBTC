@@ -4,7 +4,7 @@ import math
 from bingX import BingX
 import time
 from bingX.spot import types
-from enum import Enum
+from aenum import Enum, NoAlias
 from datetime import date
 import sys
 ###
@@ -14,35 +14,32 @@ logFile = ''
 ###
 ###############################
 # todo
-# add HAMMER and SHOOTINGSTAR strategy
 # do all the selling first the do the buy
 # add option to buy all market or half market half limit
 # add option to do buy and sell in different intervals
-# total usdt is wrong if multiple currencies exist
-# add log for each day
 # add stop price for market trades
 # add buy% and sell % in constractor of pair
-# add file to read pairs from it
 # add futures!
-# change functions to get interval as interval not interval.value
-# search for changing stdout to a file in python
-# ssh log when using python??
 # add max tries function for communication
 # add audit
-# create code way more modular for strategy, each strategy is defined by 
-# certain rules, like condtion for three white soldier
+# create code way more modular
 ###############################
 
 
 engulfing_body_condition = 2
-engulfing_first_candle_color_dont_care = True
+engulfing_first_candle_color_dont_care_buy = False
+engulfing_first_candle_color_dont_care_sell = True
+hammer_candle_color_dont_care = False
+shooting_star_candle_color_dont_care = True
 threesoldiers_body_condition = [1.01,1.02]
+hammer_tail_to_body_ratio = 6
+shooting_star_head_to_body_ratio = 6
 
 communication_max_tries = 5
 buy_percentage_init = 10
 sell_percentage_init = 13
 learning_rate_buy = 0.9
-learning_rate_sell = 1.2
+learning_rate_sell = 1.1
 buyPositionsNumber = 0
 sellPositionsNumber = 0
 PAIR_MIN_TRADE_USDT = 5
@@ -50,8 +47,11 @@ PAIR_MIN_TRADE_USDT = 5
         
 
 class Strategy(Enum):
+    _settings_ = NoAlias
     THREESOLDIERS = 3 + 1
-    ENGULFING = 2 + 1 
+    ENGULFING = 2 + 1
+    SHOOTINGSTAR = 1 + 1 
+    HAMMER = 1 + 1
 
 class Pair:
     # attributes
@@ -63,13 +63,13 @@ class Pair:
     def __init__(self) -> None:
         self.buy_percentage_current = buy_percentage_init
         self.sell_percentage_current = sell_percentage_init
-        self.strategies = [Strategy.ENGULFING, Strategy.THREESOLDIERS]
+        self.strategies = [Strategy.ENGULFING, Strategy.THREESOLDIERS, Strategy.SHOOTINGSTAR, Strategy.HAMMER]
 
     def __init__(self, pairName: str) -> None:
         self.pairName = pairName
         self.buy_percentage_current = buy_percentage_init
         self.sell_percentage_current = sell_percentage_init
-        self.strategies = [Strategy.ENGULFING, Strategy.THREESOLDIERS]
+        self.strategies = [Strategy.ENGULFING, Strategy.THREESOLDIERS, Strategy.SHOOTINGSTAR, Strategy.HAMMER]
 
     def setPairName(self,pairName: str) -> None:
         self.pairName = pairName
@@ -252,6 +252,8 @@ def getPairHistoryAsDataFrame(bingx_client: BingX, pair: Pair, interval: Interva
     # cdf = df
     ###
     cdf['isGreen'] = cdf["close"]
+    cdf['headLen'] = cdf['close']
+    cdf['tailLen'] = cdf['close']
     cdf['bodyLen'] = abs(cdf["close"] - cdf["open"])
 
     cdf = cdf.reset_index()
@@ -259,10 +261,14 @@ def getPairHistoryAsDataFrame(bingx_client: BingX, pair: Pair, interval: Interva
 
     for i in range(len(cdf)):
         tmp = cdf.loc[i,cdf.columns.values]
-        if tmp['open'] <= tmp['close']:
+        if tmp['open'] <= tmp['close']: # is green
             tmp['isGreen'] = 1
+            tmp['headLen'] = tmp['high'] - tmp['close']
+            tmp['tailLen'] = tmp['open'] - tmp['low']
         else:
             tmp['isGreen'] = 0
+            tmp['headLen'] = tmp['high'] - tmp['open']
+            tmp['tailLen'] = tmp['close'] - tmp['low']
 
         cdf.loc[i] = tmp.values
 
@@ -294,6 +300,13 @@ def getPairHistoryAsDataFrame(bingx_client: BingX, pair: Pair, interval: Interva
     # cdf.at[1,'isGreen'] = 0.0
     # cdf.at[0,'bodyLen'] = 100
     # cdf.at[1,'bodyLen'] = 10
+        # hammer
+    cdf.at[0,'isGreen'] = 1.0
+    cdf.at[0,'bodyLen'] = 1
+    cdf.at[0,'tailLen'] = 10
+        # shootingstar
+    cdf.at[0,'bodyLen'] = 1
+    cdf.at[0,'headLen'] = 10
     
     return cdf
 
@@ -305,12 +318,12 @@ class StrategyChecker:
 
         def checkData(self,cdf) -> bool | bool:
             if cdf.loc[0]['isGreen'] == 0.0:
-                if cdf.loc[1]['isGreen'] == 1.0 or engulfing_first_candle_color_dont_care:
+                if cdf.loc[1]['isGreen'] == 1.0 or engulfing_first_candle_color_dont_care_sell:
                         if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
                             self.suitableForSell = True
                 
             if cdf.loc[0]['isGreen'] == 1.0:
-                if cdf.loc[1]['isGreen'] == 0.0 or engulfing_first_candle_color_dont_care:
+                if cdf.loc[1]['isGreen'] == 0.0 or engulfing_first_candle_color_dont_care_buy:
                         if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
                             self.suitableForBuy = True 
             
@@ -337,42 +350,51 @@ class StrategyChecker:
 
             return self.suitableForBuy, self.suitableForSell
             
+    class HAMMER:
+        def __init__(self) -> None:
+            self.suitableForBuy = False
+            self.suitableForSell = False
+
+        def checkData(self,cdf) -> bool | bool:               
+            if cdf.loc[0]['isGreen'] == 1.0 or hammer_candle_color_dont_care:
+                if cdf.loc[0]['tailLen'] / cdf.loc[0]['bodyLen'] >= hammer_tail_to_body_ratio:
+                    self.suitableForBuy = True 
+            
+            return self.suitableForBuy, self.suitableForSell
+ 
+    class SHOOTINGSTAR:
+        def __init__(self) -> None:
+            self.suitableForBuy = False
+            self.suitableForSell = False
+
+        def checkData(self,cdf) -> bool | bool:               
+            if cdf.loc[0]['isGreen'] == 0.0 or shooting_star_candle_color_dont_care:
+                if cdf.loc[0]['headLen'] / cdf.loc[0]['bodyLen'] >= shooting_star_head_to_body_ratio:
+                    self.suitableForSell = True 
+            
+            return self.suitableForBuy, self.suitableForSell
         
             
 def checkPosition(cdf : pd.DataFrame, strategy: Strategy):
     # suitableForBuy = False
     # suitableForSell = False
     
-    if strategy.value == Strategy.THREESOLDIERS.value:
+    if strategy == Strategy.THREESOLDIERS:
         strategyChecker = StrategyChecker.THREESOLDIERS()
         suitableForBuy, suitableForSell = strategyChecker.checkData(cdf)
-        
-        # if cdf.loc[0]['isGreen'] == 1.0:
-        #     if cdf.loc[1]['isGreen'] == 1.0:
-        #         if cdf.loc[2]['isGreen'] == 1.0:
-        #             if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= threesoldiers_body_condition[1]:
-        #                 if cdf.loc[1]['bodyLen'] / cdf.loc[2]['bodyLen'] >= threesoldiers_body_condition[0]:
-        #                     suitableForBuy = True
-                
-        # if cdf.loc[0]['isGreen'] == 0.0:
-        #     if cdf.loc[1]['isGreen'] == 0.0:
-        #         if cdf.loc[2]['isGreen'] == 0.0:
-        #             if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= threesoldiers_body_condition[1]:
-        #                 if cdf.loc[1]['bodyLen'] / cdf.loc[2]['bodyLen'] >= threesoldiers_body_condition[0]:
-        #                     suitableForSell = True
-                            
-    if strategy.value == Strategy.ENGULFING.value:
+                                   
+    elif strategy == Strategy.ENGULFING:
         strategyChecker = StrategyChecker.ENGLUFING()
         suitableForBuy, suitableForSell = strategyChecker.checkData(cdf)
-        # if cdf.loc[0]['isGreen'] == 0.0:
-        #     if cdf.loc[1]['isGreen'] == 1.0 or engulfing_first_candle_color_dont_care:
-        #             if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
-        #                 suitableForSell = True
-                
-        # if cdf.loc[0]['isGreen'] == 1.0:
-        #     if cdf.loc[1]['isGreen'] == 0.0 or engulfing_first_candle_color_dont_care:
-        #             if cdf.loc[0]['bodyLen'] / cdf.loc[1]['bodyLen'] >= engulfing_body_condition:
-        #                 suitableForBuy = True 
+
+    elif strategy == Strategy.SHOOTINGSTAR:
+        strategyChecker = StrategyChecker.SHOOTINGSTAR()
+        suitableForBuy, suitableForSell = strategyChecker.checkData(cdf)
+
+    elif strategy == Strategy.HAMMER:
+        strategyChecker = StrategyChecker.HAMMER()
+        suitableForBuy, suitableForSell = strategyChecker.checkData(cdf)
+
     
     print(f'suitableForBuy: {suitableForBuy}')
     print(f'suitableForSell: {suitableForSell}')
@@ -407,7 +429,7 @@ def buyPair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance, 
         return res, pair.buy_percentage_current
 
     else:
-            print("\tUSDT balance lower than minimum for buying!")
+            print("\tUSDT balance lower than minimum for buying!\n")
             return 0, pair.buy_percentage_current
         
 
@@ -431,7 +453,7 @@ def sellPair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance,
         pair.sell_percentage_current *= learning_rate_sell
         return res, pair.sell_percentage_current
     else:
-        print("\tpair balance lower than minumum for selling!")
+        print("\tpair balance lower than minumum for selling!\n")
         return 0, pair.sell_percentage_current
 
 def calibreTime(interval: Interval):
