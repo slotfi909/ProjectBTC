@@ -36,7 +36,9 @@ hammer_candle_color_dont_care = False
 shooting_star_candle_color_dont_care = True
 threesoldiers_body_condition = [1.01,1.02]
 hammer_tail_to_body_ratio = 6
+hammer_head_to_body_ratio = 0.1
 shooting_star_head_to_body_ratio = 6
+shooting_star_tail_to_body_ratio = 0.1
 
 communication_max_tries = 5
 buy_percentage_init = 10
@@ -57,12 +59,13 @@ class Strategy(Enum):
     HAMMER = 1 + 1
 
 class Pair:
+    '''
     # attributes
         # pairName: str
         # buy_percentage_current: float
         # sell_percentage_current: float
         # strategies: list (contains multiple Strategy)
-
+    '''
     def __init__(self) -> None:
         self.buy_percentage_current = buy_percentage_init
         self.sell_percentage_current = sell_percentage_init
@@ -163,7 +166,6 @@ def get_total_balance(bingx_client: BingX) -> float:
             continue
         pairName = currency_name + '-USDT'
         klineData = bingx_client.spot.market.get_k_line_data(pairName,Interval.MINUTELY_ONEMINUTE.value)
-        # pair_lastPrice = float(klineData['close'])
         pair_lastPrice = float(klineData[0][1])
         total_balance += float(record['free']) * pair_lastPrice
     
@@ -192,7 +194,6 @@ def get_account_info(bingx_client: BingX,pair: Pair) -> float | np.longdouble:
 
 def get_pair_value(bingx_client: BingX,pair: Pair,usdt_balance,pair_balance: np.longdouble) -> float | float:
     res = bingx_client.spot.market.get_k_line_data(pair.pairName,Interval.MINUTELY_ONEMINUTE.value)
-    # pair_balance_as_usdt = pair_balance * float(res['close'])
     pair_balance_as_usdt = pair_balance * res[0][1]
     print(f'pair_balance_as_usdt: {pair_balance_as_usdt}')
     return pair_balance_as_usdt
@@ -238,22 +239,15 @@ def get_times(strategy: Strategy, interval: Interval):
 
 def getPairHistoryAsDataFrame(bingx_client: BingX, pair: Pair, interval: Interval, start_time, end_time, strategy: Strategy):
     klineDataHistory = bingx_client.spot.market.get_k_line_data(pair.pairName,interval.value,start_time,end_time,strategy.value)
-    import warnings
-    warnings.filterwarnings('ignore')
+    # import warnings
+    # warnings.filterwarnings('ignore')
 
     df = pd.DataFrame(klineDataHistory)
-    # cdf = df.iloc[::-1]
 
-    # cdf['open'] = pd.to_numeric(cdf['open'])
-    # cdf['high'] = pd.to_numeric(cdf['high'])
-    # cdf['low'] = pd.to_numeric(cdf['low'])
-    # cdf['close'] = pd.to_numeric(cdf['close'])
-    ###
     del df[6],df[7]
     df.columns = ['time','open','high','low','close','volume']
     cdf = df.drop(0) if len(df) == strategy.value else df
-    # cdf = df
-    ###
+
     cdf['isGreen'] = cdf["close"]
     cdf['headLen'] = cdf['close']
     cdf['tailLen'] = cdf['close']
@@ -304,12 +298,12 @@ def getPairHistoryAsDataFrame(bingx_client: BingX, pair: Pair, interval: Interva
     # cdf.at[0,'bodyLen'] = 100
     # cdf.at[1,'bodyLen'] = 10
         # hammer
-    cdf.at[0,'isGreen'] = 1.0
-    cdf.at[0,'bodyLen'] = 1
-    cdf.at[0,'tailLen'] = 10
+    # cdf.at[0,'isGreen'] = 1.0
+    # cdf.at[0,'bodyLen'] = 1
+    # cdf.at[0,'tailLen'] = 10
         # shootingstar
-    cdf.at[0,'bodyLen'] = 1
-    cdf.at[0,'headLen'] = 10
+    # cdf.at[0,'bodyLen'] = 1
+    # cdf.at[0,'headLen'] = 10
     
     return cdf
 
@@ -361,7 +355,8 @@ class StrategyChecker:
         def checkData(self,cdf) -> bool | bool:               
             if cdf.loc[0]['isGreen'] == 1.0 or hammer_candle_color_dont_care:
                 if cdf.loc[0]['tailLen'] / cdf.loc[0]['bodyLen'] >= hammer_tail_to_body_ratio:
-                    self.suitableForBuy = True 
+                    if cdf.loc[0]['headLen'] / cdf.loc[0]['bodyLen'] <= hammer_head_to_body_ratio:
+                       self.suitableForBuy = True 
             
             return self.suitableForBuy, self.suitableForSell
  
@@ -373,7 +368,8 @@ class StrategyChecker:
         def checkData(self,cdf) -> bool | bool:               
             if cdf.loc[0]['isGreen'] == 0.0 or shooting_star_candle_color_dont_care:
                 if cdf.loc[0]['headLen'] / cdf.loc[0]['bodyLen'] >= shooting_star_head_to_body_ratio:
-                    self.suitableForSell = True 
+                    if cdf.loc[0]['tailLen'] / cdf.loc[0]['bodyLen'] <= shooting_star_tail_to_body_ratio:
+                        self.suitableForSell = True 
             
             return self.suitableForBuy, self.suitableForSell
         
