@@ -1,7 +1,0 @@
-current time: Wed Apr 10 17:21:32 2024
-need to sleep 28211.51 miliseconds (0.0 minutes and 28.21 seconds) to get in line with correct time!
-
-sleeping...
-
-======================================================
-======================================================

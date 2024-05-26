@@ -26,6 +26,7 @@ logFile = ''
 # add max tries function for communication
 # add audit
 # create code way more modular
+# prevent division by zero
 ###############################
 
 
@@ -49,7 +50,29 @@ buyPositionsNumber = 0
 sellPositionsNumber = 0
 PAIR_MIN_TRADE_USDT = 5
 
-        
+class OrderType:
+    class OrderTypeEnum(Enum):
+        ALLMARKET = 1
+        MARKETANDLIMIT = 2 
+    def __init__(self) -> None:
+        self.MARKETPERCENT = 50
+        self.LIMITRISKPERCENT = 50
+        self.orderTypeEnum = OrderType.OrderTypeEnum.MARKETANDLIMIT
+
+    def __init__(self, orderTypeEnum: OrderTypeEnum) -> None:
+        self.MARKETPERCENT = 50
+        self.LIMITRISKPERCENT = 50
+        self.orderTypeEnum = orderTypeEnum
+
+    def setOrderTypeEnum(self,orderTypeEnum: OrderTypeEnum):
+        self.orderTypeEnum = orderTypeEnum
+
+    def setMarketPercent(self,marketPercent):
+        self.MARKETPERCENT = marketPercent
+
+    def setLimitRiskPercent(self,limitRiskPercent):
+        self.LIMITRISKPERCENT = limitRiskPercent
+
 
 class Strategy(Enum):
     _settings_ = NoAlias
@@ -231,9 +254,9 @@ def get_times(strategy: Strategy, interval: Interval):
 
     start_time = round(time.time() * 1e3) - timeOffset * (strategy.value)
     end_time = round(time.time() * 1e3)
-    print(f'difference(ms): {end_time - start_time}')
-    print(f'difference(hour): {(end_time - start_time) / 1e3 / 60 / 60}')
-    print(f'number of candles: {(end_time - start_time) / timeOffset - 1}')
+    # print(f'difference(ms): {end_time - start_time}')
+    # print(f'difference(hour): {(end_time - start_time) / 1e3 / 60 / 60}')
+    # print(f'number of candles: {(end_time - start_time) / timeOffset - 1}')
     print(f'\tcurrent interval -> {interval}')
     return start_time, end_time,timeOffset
 

@@ -10,16 +10,19 @@ api_key = "SbyekABHMR0SyrIQKTqU14sExh5m40sV5a6jaBenI26u5SDm8z4gGzQCLamCp6Ww2uJyV
 pairs = BTClib.readPairsFromFile('./pairs.txt')
 
 # set interval
-interval = BTClib.Interval.HOURLY_ONEHOUR
-
+interval = BTClib.Interval.MINUTELY_THREEMINUTE
 bingx_client = BTClib.BingX(api_key=api_key, secret_key=secret_key)
+
 
 ###############
 ##playground
+# orderType = BTClib.OrderType()
+orderType = BTClib.OrderType(BTClib.OrderType.OrderTypeEnum.MARKETANDLIMIT)
 ###############
+
 while(True):
     
-    BTClib.saveToLogs()
+    # BTClib.saveToLogs()
 
     BTClib.calibreTime(interval)
 
