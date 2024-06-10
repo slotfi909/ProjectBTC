@@ -8,7 +8,7 @@ from aenum import Enum, NoAlias
 from datetime import date
 import sys
 ###
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 ordertype_is_set = False
 old_date = ''
@@ -16,6 +16,7 @@ logFile = ''
 ###
 ###############################
 # todo
+# check pair_min_trade for both market trade and limit trade
 # price is queried two times, once in get_total_balance and then in 
 # do all the selling first the do the buy
 # add option to buy all market or half market half limit
@@ -32,9 +33,14 @@ logFile = ''
 # prevent division by zero
 ###############################
 
+MARKET_BUY_PERCENTAGE = 50
+LIMIT_BUY_PERCENTAGE = 100 - MARKET_BUY_PERCENTAGE
+MARKET_SELL_PERCENTAGE = 50
+LIMIT_SELL_PERCENTAGE = 100 - MARKET_SELL_PERCENTAGE
+ORDER_TIMEOUT = 4
 
 engulfing_body_condition = 2
-engulfing_first_candle_color_dont_care_buy = False
+engulfing_first_candle_color_dont_care_buy = True
 engulfing_first_candle_color_dont_care_sell = True
 hammer_candle_color_dont_care = False
 shooting_star_candle_color_dont_care = True
@@ -44,6 +50,7 @@ hammer_head_to_body_ratio = 0.1
 shooting_star_head_to_body_ratio = 6
 shooting_star_tail_to_body_ratio = 0.1
 
+
 communication_max_tries = 5
 buy_percentage_init = 10
 sell_percentage_init = 13
@@ -52,30 +59,14 @@ learning_rate_sell = 1.1
 buyPositionsNumber = 0
 sellPositionsNumber = 0
 PAIR_MIN_TRADE_USDT = 5
+_limit_orders = []
 
-class OrderType:
-    class OrderTypeEnum(Enum):
-        ALLMARKET = 1
-        MARKETANDLIMIT = 2 
-    def __init__(self) -> None:
-        self.MARKETPERCENT = 50
-        self.LIMITRISKPERCENT = 50
-        self.orderTypeEnum = OrderType.OrderTypeEnum.MARKETANDLIMIT
-
-    def __init__(self, orderTypeEnum: OrderTypeEnum) -> None:
-        self.MARKETPERCENT = 50
-        self.LIMITRISKPERCENT = 50
-        self.orderTypeEnum = orderTypeEnum
-
-    def set_orderTypeEnum(self,orderTypeEnum: OrderTypeEnum):
-        self.orderTypeEnum = orderTypeEnum
-
-    def set_marketPercent(self,marketPercent):
-        self.MARKETPERCENT = marketPercent
-
-    def set_limitRiskPercent(self,limitRiskPercent):
-        self.LIMITRISKPERCENT = limitRiskPercent
-        self.orderTypeEnum = OrderType.OrderTypeEnum.MARKETANDLIMIT
+class order_detail:
+    global ORDER_TIMEOUT
+    def __init__(self,symbol,orderId, timeout_counter_initial = ORDER_TIMEOUT):
+        self.orderId = orderId
+        self.symbol = symbol
+        self.timeout_counter = timeout_counter_initial
 
 class Strategy(Enum):
     _settings_ = NoAlias
@@ -173,6 +164,19 @@ class Interval(Enum):
 class Audit(Enum):
     WEEKLY = 1
     MONTHLY = 2
+
+def calculate_limit_price(cdf):
+    open_price = cdf['open']
+    close_price = cdf['close']
+    body_length = cdf['bodyLen']
+    if cdf['isGreen'] == 1:
+        limit_price = open_price + body_length / 2
+    else:
+        limit_price = close_price + body_length / 2
+    
+    return limit_price
+
+
 
 def read_pairs_from_file(fileAddress: str) -> list:
     with open(fileAddress, 'r') as pairsFile:
@@ -491,32 +495,56 @@ def _calculateAmount(total_balance,usdt,current_price,trade_percentage_current):
         amount_usdt = usdt
     amount = amount_usdt / current_price
     return amount
-    
-def buy_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance, usdt_balance):
+
+def create_market_order(pair: Pair, side: types.Side, amount):
+
+    created_order = types.Order(symbol=pair.pairName, side=side,type=types.OrderType.MARKET,quote_order_qty=amount,quantity=amount)
+    return created_order
+
+
+def create_limit_order(pair: Pair, side: types.Side, amount, price):
+    created_order = types.Order(symbol=pair.pairName, side=side,type=types.OrderType.LIMIT,quote_order_qty=amount,quantity=amount, price=price)
+    return created_order
+
+def buy_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance, usdt_balance,limit_price):
     global buyPositionsNumber,PAIR_MIN_TRADE_USDT
     print("\033[92m \033[1m{}\033[00m" .format(f"buy opportunity!\n"))
+    if DEBUG_MODE == True:
+        print(f'current buy percentage: {pair.buy_percentage_current}')
 
     buyPositionsNumber += 1
-    # res = bingx_client.spot.market.get_k_line_data(pair.pairName, interval.value)
-    # last_price = float(res['close'])
     last_price = pair.get_latest_price()
     amountToBuy = _calculateAmount(total_balance,usdt_balance,last_price,pair.buy_percentage_current)
        
-    if amountToBuy * last_price > PAIR_MIN_TRADE_USDT:
-
-        print(f'current buy percentage: {pair.buy_percentage_current}')
-        order = types.Order(symbol=pair.pairName, side=types.Side.BUY,type=types.OrderType.MARKET,quote_order_qty=amountToBuy,quantity=amountToBuy)
-        print(f'created order: {order.to_dict()}')
+    if amountToBuy * last_price > 2 * PAIR_MIN_TRADE_USDT:
+        market_amount = amountToBuy * (MARKET_BUY_PERCENTAGE) / 100
+        limit_amount = amountToBuy - market_amount
+        order_market_sell = create_market_order(pair,types.Side.BUY,market_amount)
+        order_limit_sell = create_limit_order(pair,types.Side.BUY,market_amount,limit_price)
         if DEBUG_MODE == False:
-           res = bingx_client.spot.trade.create_order(order)
+            market_order_result = bingx_client.spot.trade.create_order(order_market_sell)
+            limit_order_result = bingx_client.spot.trade.create_order(order_limit_sell)
+            print(f"market order result: {market_order_result}\n limit order result: {limit_order_result}")
+            add_limit_order_to_queue(limit_order_result)
+
         pair.buy_percentage_current *= learning_rate_buy
-        return res, pair.buy_percentage_current
+        return market_order_result, pair.buy_percentage_current
 
     else:
             print("\tUSDT balance lower than minimum for buying!\n")
             return 0, pair.buy_percentage_current
-        
-def sell_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance,pair_balance):
+def check_order_timeout(bingx_client: BingX):
+    global _limit_orders
+    for order in _limit_orders:
+        order.timeout_counter -= 1
+        if order.timeout_counter <= 0:
+            cancel_result = bingx_client.spot.trade.cancel_order(order.orderId,order.symbol)
+            print(f"order for symbol {order.symbol} with orderId {order.orderId} canceled.")
+            print(f"cancellation result: {cancel_result}")
+            _limit_orders.remove(order)
+
+
+def sell_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance,pair_balance,limit_price):
     global sellPositionsNumber,PAIR_MIN_TRADE_USDT,DEBUG_MODE
     sellPositionsNumber += 1
     print("\033[92m \033[1m{}\033[00m" .format(f"sell opportunity!\n"))  
@@ -527,17 +555,29 @@ def sell_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance
     pair_value_as_usdt = get_pair_value(bingx_client,pair,pair_balance)
     amountToSell = _calculateAmount(total_balance, pair_value_as_usdt, last_price, pair.sell_percentage_current)
 
-
-    if amountToSell * last_price > PAIR_MIN_TRADE_USDT:
-        order = types.Order(symbol=pair.pairName, side=types.Side.SELL,type=types.OrderType.MARKET,quote_order_qty=amountToSell,quantity=amountToSell)
-        print(f'created order: {order.to_dict()}')
+    if amountToSell * last_price > 2 * PAIR_MIN_TRADE_USDT:
+        market_amount = amountToSell * (MARKET_SELL_PERCENTAGE) / 100
+        limit_amount = amountToSell - market_amount
+        order_market_sell = create_market_order(pair,types.Side.SELL,market_amount)
+        order_limit_sell = create_limit_order(pair,types.Side.SELL,market_amount,limit_price)
         if DEBUG_MODE == False:
-            res = bingx_client.spot.trade.create_order(order)
+            market_order_result = bingx_client.spot.trade.create_order(order_market_sell)
+            limit_order_result = bingx_client.spot.trade.create_order(order_limit_sell)
+            print(f"market order result: {market_order_result}\n limit order result: {limit_order_result}")
+            add_limit_order_to_queue(limit_order_result)
+
         pair.sell_percentage_current *= learning_rate_sell
-        return res, pair.sell_percentage_current
+        return market_order_result, pair.sell_percentage_current
     else:
         print("\tpair balance lower than minumum for selling!\n")
         return 0, pair.sell_percentage_current
+
+def add_limit_order_to_queue(limit_order_result: dict[str, any]):
+    orderId = limit_order_result['orderId']
+    orderSymbol = limit_order_result['symbol']
+    order_object = order_detail(orderSymbol,orderId)
+    _limit_orders.append(order_object)
+
 
 def calibre_time(interval: Interval):
     current_time = time.time()

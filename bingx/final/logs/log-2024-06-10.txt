@@ -1,0 +1,118 @@
+current time: Mon Jun 10 21:16:40 2024
+need to sleep 80004.94 miliseconds (1.0 minutes and 20.00 seconds) to get in line with correct time!
+
+sleeping...
+
+======================================================
+======================================================
+current time: Mon Jun 10 21:18:23 2024
+need to sleep 157017.15 miliseconds (2.0 minutes and 37.02 seconds) to get in line with correct time!
+
+sleeping...
+
+======================================================
+======================================================
+current time: Mon Jun 10 21:30:05 2024
+need to sleep 175464.03 miliseconds (2.0 minutes and 55.46 seconds) to get in line with correct time!
+
+sleeping...
+
+======================================================
+======================================================
+current time: Mon Jun 10 21:35:01 2024
+need to sleep 59921.99 miliseconds (0.0 minutes and 59.92 seconds) to get in line with correct time!
+
+sleeping...
+
+======================================================
+======================================================
+current time: Mon Jun 10 21:41:54 2024
+need to sleep 6210.09 miliseconds (0.0 minutes and 6.21 seconds) to get in line with correct time!
+
+sleeping...
+
+======================================================
+======================================================
+
+new try at Mon Jun 10 21:42:07 2024 for pair BTC-USDT:
+
+Traceback (most recent call last):
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/urllib3/connectionpool.py", line 793, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/urllib3/connectionpool.py", line 537, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/urllib3/connection.py", line 466, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 1428, in getresponse
+    response.begin()
+  File "/usr/lib/python3.12/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 300, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/urllib3/util/util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/urllib3/connectionpool.py", line 793, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/urllib3/connectionpool.py", line 537, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/urllib3/connection.py", line 466, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 1428, in getresponse
+    response.begin()
+  File "/usr/lib/python3.12/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 300, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/./finalBTC.py", line 41, in <module>
+    pair.update_latest_price(bingx_client)
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/BTClib.py", line 132, in update_latest_price
+    res = bingx_client.spot.market.get_k_line_data(self.pairName,Interval.MINUTELY_ONEMINUTE.value)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/bingX/spot/market.py", line 76, in get_k_line_data
+    response = self.__http_manager.get(endpoint, payload)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/bingX/_http_manager.py", line 91, in get
+    return self._request("GET", endpoint, payload, headers)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/bingX/_http_manager.py", line 58, in _request
+    req = self.__session.get(url)
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/requests/sessions.py", line 602, in get
+    return self.request("GET", url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/requests/adapters.py", line 682, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))

@@ -10,7 +10,7 @@ api_key = "SbyekABHMR0SyrIQKTqU14sExh5m40sV5a6jaBenI26u5SDm8z4gGzQCLamCp6Ww2uJyV
 pairs = BTClib.read_pairs_from_file('./pairs.txt')
 
 # set interval
-interval = BTClib.Interval.MINUTELY_ONEMINUTE
+interval = BTClib.Interval.MINUTELY_THREEMINUTE
 bingx_client = BTClib.BingX(api_key=api_key, secret_key=secret_key)
 
 
@@ -26,10 +26,12 @@ BTClib.cancel_previous_orders(bingx_client)
 
 while(True):
     
-    # BTClib.saveToLogs()
+    BTClib.save_to_logs()
 
     BTClib.calibre_time(interval)
     
+    BTClib.check_order_timeout(bingx_client)
+
     total_balance = BTClib.get_total_balance(bingx_client)
 
     for pair in pairs:
@@ -53,6 +55,8 @@ while(True):
 
             cdf = BTClib.get_pair_history_as_dataframe(bingx_client,pair,interval,start_time,end_time,strategy)
 
+            limit_price = BTClib.calculate_limit_price(cdf.loc[0])
+
             print(f'\ncurrent pair data for strategy {strategy}:\n{cdf}\n')
 
             suitableForBuy, suitableForSell = BTClib.check_position(cdf,strategy)
@@ -64,16 +68,16 @@ while(True):
             balances_changed = False
 
             if suitableForSell:
-                res, pair.sell_percentage_current = BTClib.sell_pair(bingx_client,pair,interval,total_balance,pair_balance)
+                res, pair.sell_percentage_current = BTClib.sell_pair(bingx_client,pair,interval,total_balance,pair_balance,limit_price)
                 balances_changed = True
 
             if suitableForBuy:
-                res, pair.buy_percentage_current = BTClib.buy_pair(bingx_client,pair,interval,total_balance,usdt_balance)
+                res, pair.buy_percentage_current = BTClib.buy_pair(bingx_client,pair,interval,total_balance,usdt_balance,limit_price)
                 balances_changed = True
 
 
             if res != 0:
-                print(f"order result:\n{res}\n")
+                # print(f"order result:\n{res}\n")
                 if suitableForBuy:
                     pair.sell_percentage_current = BTClib.sell_percentage_init
                     print('sell percentage successfully reset')
