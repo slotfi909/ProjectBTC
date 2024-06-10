@@ -7,57 +7,70 @@ secret_key = "WqP5txrWtmbGcMND5GjFiBZICth5nZFIXYKEPqKitRl7xOHVGOFzNo8yNCLQUmK4gu
 api_key = "SbyekABHMR0SyrIQKTqU14sExh5m40sV5a6jaBenI26u5SDm8z4gGzQCLamCp6Ww2uJyVjyhJQESk4Gt5jA"
 
 # prepairing pairs
-pairs = BTClib.readPairsFromFile('./pairs.txt')
+pairs = BTClib.read_pairs_from_file('./pairs.txt')
 
 # set interval
-interval = BTClib.Interval.MINUTELY_THREEMINUTE
+interval = BTClib.Interval.MINUTELY_ONEMINUTE
 bingx_client = BTClib.BingX(api_key=api_key, secret_key=secret_key)
 
 
 ###############
 ##playground
 # orderType = BTClib.OrderType()
-orderType = BTClib.OrderType(BTClib.OrderType.OrderTypeEnum.MARKETANDLIMIT)
+# orderType = BTClib.OrderType(BTClib.OrderType.OrderTypeEnum.MARKETANDLIMIT)
 ###############
+
+BTClib.cancel_previous_orders(bingx_client)
+
+# BTClib.set_ordertype(orderType)
 
 while(True):
     
     # BTClib.saveToLogs()
 
-    BTClib.calibreTime(interval)
+    BTClib.calibre_time(interval)
+    
+    total_balance = BTClib.get_total_balance(bingx_client)
 
     for pair in pairs:
 
         print(f"\nnew try at {time.ctime(time.time())} for pair {pair.pairName}:\n")
+
+        pair.update_latest_price(bingx_client)
 
         balances_changed = True
         for strategy in pair.strategies:
 
             if balances_changed:
 
-                usdt_balance, pair_balance = BTClib.get_account_info(bingx_client,pair)
+                usdt_balance = BTClib.get_usdt_balance(bingx_client)
 
-                pair_balance_as_usdt = BTClib.get_pair_value(bingx_client,pair,usdt_balance,pair_balance)
+                pair_balance = BTClib.get_pair_balance(bingx_client,pair)
 
-            total_balance = BTClib.get_total_balance(bingx_client)
+                pair_balance_as_usdt = BTClib.get_pair_value(bingx_client,pair,pair_balance)
 
-            start_time, end_time,intervalAsMillisecond = BTClib.get_times(strategy,interval)
+            start_time, end_time,interval_as_millisecond = BTClib.get_times(strategy,interval)
 
-            cdf = BTClib.getPairHistoryAsDataFrame(bingx_client,pair,interval,start_time,end_time,strategy)
+            cdf = BTClib.get_pair_history_as_dataframe(bingx_client,pair,interval,start_time,end_time,strategy)
 
             print(f'\ncurrent pair data for strategy {strategy}:\n{cdf}\n')
 
-            suitableForBuy, suitableForSell = BTClib.checkPosition(cdf,strategy)
+            suitableForBuy, suitableForSell = BTClib.check_position(cdf,strategy)
+
+            print(f'suitableForBuy: {suitableForBuy}')
+            print(f'suitableForSell: {suitableForSell}')
 
             res = 0
             balances_changed = False
-            if suitableForBuy:
-                res, pair.buy_percentage_current = BTClib.buyPair(bingx_client,pair,interval,total_balance,usdt_balance)
-                balances_changed = True
 
             if suitableForSell:
-                res, pair.sell_percentage_current = BTClib.sellPair(bingx_client,pair,interval,total_balance,pair_balance)
+                res, pair.sell_percentage_current = BTClib.sell_pair(bingx_client,pair,interval,total_balance,pair_balance)
                 balances_changed = True
+
+            if suitableForBuy:
+                res, pair.buy_percentage_current = BTClib.buy_pair(bingx_client,pair,interval,total_balance,usdt_balance)
+                balances_changed = True
+
 
             if res != 0:
                 print(f"order result:\n{res}\n")

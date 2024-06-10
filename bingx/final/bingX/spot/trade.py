@@ -38,14 +38,14 @@ class Trade:
         return response.json()["data"]
 
     
-    def cancel_order_all_orders(self, symbol: str | None, recv_window: int | None = None) -> dict[str, Any]:
+    def cancel_order_all_orders(self, symbol: str | None = None, recv_window: int | None = None) -> dict[str, Any]:
         """
         cancel all orders related to a pair,
         if no pair specified, cancel all available orders
         https://bingx-api.github.io/docs/#/en-us/spot/trade-api.html#Cancel%20orders%20by%20symbol
         """
 
-        endpoint = "/openApi/spot/v1/trade/cancelOpenOrders "
+        endpoint = "/openApi/spot/v1/trade/cancelOpenOrders"
         if symbol is None:
             payload = {} if recv_window is None else {"recvWindow": recv_window}
         else:

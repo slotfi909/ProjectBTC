@@ -9,11 +9,14 @@ from datetime import date
 import sys
 ###
 DEBUG_MODE = True
+
+ordertype_is_set = False
 old_date = ''
 logFile = ''
 ###
 ###############################
 # todo
+# price is queried two times, once in get_total_balance and then in 
 # do all the selling first the do the buy
 # add option to buy all market or half market half limit
 # add option to do buy and sell in different intervals
@@ -64,15 +67,15 @@ class OrderType:
         self.LIMITRISKPERCENT = 50
         self.orderTypeEnum = orderTypeEnum
 
-    def setOrderTypeEnum(self,orderTypeEnum: OrderTypeEnum):
+    def set_orderTypeEnum(self,orderTypeEnum: OrderTypeEnum):
         self.orderTypeEnum = orderTypeEnum
 
-    def setMarketPercent(self,marketPercent):
+    def set_marketPercent(self,marketPercent):
         self.MARKETPERCENT = marketPercent
 
-    def setLimitRiskPercent(self,limitRiskPercent):
+    def set_limitRiskPercent(self,limitRiskPercent):
         self.LIMITRISKPERCENT = limitRiskPercent
-
+        self.orderTypeEnum = OrderType.OrderTypeEnum.MARKETANDLIMIT
 
 class Strategy(Enum):
     _settings_ = NoAlias
@@ -90,11 +93,13 @@ class Pair:
         # strategies: list (contains multiple Strategy)
     '''
     def __init__(self) -> None:
+        self._price_updated = False
         self.buy_percentage_current = buy_percentage_init
         self.sell_percentage_current = sell_percentage_init
         self.strategies = [Strategy.ENGULFING, Strategy.THREESOLDIERS, Strategy.SHOOTINGSTAR, Strategy.HAMMER]
 
     def __init__(self, pairName: str) -> None:
+        self._price_updated = False
         self.pairName = pairName
         self.buy_percentage_current = buy_percentage_init
         self.sell_percentage_current = sell_percentage_init
@@ -122,6 +127,26 @@ class Pair:
         assert len(self.strategies > 0), 'strategies does not have any member!'
         self.strategies.pop()
 
+    def extract_currency_name(self) -> str:
+        for index in range(len(self.pairName)):
+            if self.pairName[index] == '-':
+                dash_index = index
+                break
+
+        currency = self.pairName[0:dash_index]
+        return currency
+
+    def update_latest_price(self,bingx_client: BingX):
+        self._price_updated = True
+        res = bingx_client.spot.market.get_k_line_data(self.pairName,Interval.MINUTELY_ONEMINUTE.value)
+        self._latest_price = res[0][1]
+
+        return
+
+    def get_latest_price(self):
+        assert self._price_updated , "latest price was never set, but there was an attempt to access it!"
+        return self._latest_price
+        
 
 class Interval(Enum):
 
@@ -149,9 +174,9 @@ class Audit(Enum):
     WEEKLY = 1
     MONTHLY = 2
 
-def readPairsFromFile(fileAddress: str) -> list:
-    pairsFile = open(fileAddress, 'r')
-    pairs_str = pairsFile.readlines()
+def read_pairs_from_file(fileAddress: str) -> list:
+    with open(fileAddress, 'r') as pairsFile:
+        pairs_str = pairsFile.readlines()
     pairs = []
     for pair_str in pairs_str:
         stripped = pair_str.strip()
@@ -159,11 +184,11 @@ def readPairsFromFile(fileAddress: str) -> list:
 
     return pairs
 
-def saveToLogs():
+def save_to_logs():
     global old_date, logFile
 
     new_date = date.today()
-    if old_date == '':
+    if old_date == '': # bot just started
         old_date = new_date
         logFile = open(f'./logs/log-{new_date}.txt','a')
 
@@ -175,7 +200,14 @@ def saveToLogs():
     sys.stdout = logFile
     sys.stderr = logFile
 
-
+def cancel_previous_orders(bingx_client: BingX,symbol: str | None = None):
+    if symbol is None:
+        res = bingx_client.spot.trade.cancel_order_all_orders()
+    else:
+        res = bingx_client.spot.trade.cancel_order_all_orders(symbol)
+    if DEBUG_MODE:
+        print(f'result of cancel previous orders with arg {symbol}:\n{res}')
+    return res
 
 def get_total_balance(bingx_client: BingX) -> float:
     total_balance = float(0)
@@ -187,20 +219,57 @@ def get_total_balance(bingx_client: BingX) -> float:
             continue
         if currency_name == 'VST':
             continue
+        if float(record['free']) == 0:
+            continue
+        
         pairName = currency_name + '-USDT'
-        klineData = bingx_client.spot.market.get_k_line_data(pairName,Interval.MINUTELY_ONEMINUTE.value)
-        pair_lastPrice = float(klineData[0][1])
-        total_balance += float(record['free']) * pair_lastPrice
+        pair = Pair(pairName)
+        pair.update_latest_price(bingx_client)
+        total_balance += get_pair_value(bingx_client, pair, float(record['free']))
     
     return total_balance
 
+def get_pair_balance(bingx_client: BingX,pair: Pair) -> np.longdouble:
+    
+    currency = pair.extract_currency_name()
+
+    res = bingx_client.spot.trade.get_assets()
+    
+    pair_balance = 0
+    for record in res['balances']:
+        if record['asset'] == currency:
+            pair_balance = float(record['free'])
+            break
+
+    if DEBUG_MODE:
+        print(f'pair balance: {pair_balance}')
+    return pair_balance
+
+def get_usdt_balance(bingx_client: BingX) -> float:
+
+    res = bingx_client.spot.trade.get_assets()
+    
+    usdt_balance = 0
+    for record in res['balances']:
+        if record['asset'] == 'USDT':
+            usdt_balance = float(record['free'])
+            break
+
+    if DEBUG_MODE:
+        print(f'usdt balance: {usdt_balance}\n')
+    return usdt_balance
 
 def get_account_info(bingx_client: BingX,pair: Pair) -> float | np.longdouble:
-    for index in range(len(pair.pairName)):
-        if pair.pairName[index] == '-':
-            dash_index = index
-            break
-    currency = pair.pairName[0:dash_index]
+    '''
+    unused function -> replaced with get_pair and get_usdt balance
+    '''
+    # for index in range(len(pair.pairName)):
+        # if pair.pairName[index] == '-':
+            # dash_index = index
+            # break
+    # currency = pair.pairName[0:dash_index]
+
+    currency = pair.extract_currency_name()
 
     res = bingx_client.spot.trade.get_assets()
     
@@ -211,17 +280,19 @@ def get_account_info(bingx_client: BingX,pair: Pair) -> float | np.longdouble:
         if record['asset'] == currency:
             pair_balance = float(record['free'])
 
-    print(f'usdt balance: {usdt_balance}\n')
-    print(f'pair balance: {pair_balance}')
+    if DEBUG_MODE:
+        print(f'usdt balance: {usdt_balance}\n')
+        print(f'pair balance: {pair_balance}')
     return usdt_balance, pair_balance
 
-def get_pair_value(bingx_client: BingX,pair: Pair,usdt_balance,pair_balance: np.longdouble) -> float | float:
-    res = bingx_client.spot.market.get_k_line_data(pair.pairName,Interval.MINUTELY_ONEMINUTE.value)
-    pair_balance_as_usdt = pair_balance * res[0][1]
-    print(f'pair_balance_as_usdt: {pair_balance_as_usdt}')
+def get_pair_value(bingx_client: BingX,pair: Pair,pair_balance: np.longdouble) -> float:
+    
+    pair_balance_as_usdt = pair_balance * pair.get_latest_price()
+    if DEBUG_MODE:
+        print(f'pair: {pair.pairName}, pair_balance_as_usdt: {pair_balance_as_usdt}')
     return pair_balance_as_usdt
 
-def getIntervalAsMiliSeconds(interval: Interval):
+def _getIntervalAsMiliSeconds(interval: Interval):
     oneMinuteAsMiliSeconds = 1 * 60 * 1000
     oneHourAsMiliSeconds = 60 * oneMinuteAsMiliSeconds
     oneDayAsMiliSeconds = 24 * oneHourAsMiliSeconds
@@ -250,21 +321,17 @@ def getIntervalAsMiliSeconds(interval: Interval):
     return timeOffset
 
 def get_times(strategy: Strategy, interval: Interval):
-    timeOffset = getIntervalAsMiliSeconds(interval)
+    timeOffset = _getIntervalAsMiliSeconds(interval)
 
     start_time = round(time.time() * 1e3) - timeOffset * (strategy.value)
     end_time = round(time.time() * 1e3)
-    # print(f'difference(ms): {end_time - start_time}')
-    # print(f'difference(hour): {(end_time - start_time) / 1e3 / 60 / 60}')
-    # print(f'number of candles: {(end_time - start_time) / timeOffset - 1}')
-    print(f'\tcurrent interval -> {interval}')
+    if DEBUG_MODE:
+        print(f'\tcurrent interval -> {interval}')
     return start_time, end_time,timeOffset
 
-def getPairHistoryAsDataFrame(bingx_client: BingX, pair: Pair, interval: Interval, start_time, end_time, strategy: Strategy):
+def get_pair_history_as_dataframe(bingx_client: BingX, pair: Pair, interval: Interval, start_time, end_time, strategy: Strategy):
     klineDataHistory = bingx_client.spot.market.get_k_line_data(pair.pairName,interval.value,start_time,end_time,strategy.value)
-    # import warnings
-    # warnings.filterwarnings('ignore')
-
+    
     df = pd.DataFrame(klineDataHistory)
 
     del df[6],df[7]
@@ -395,9 +462,8 @@ class StrategyChecker:
                         self.suitableForSell = True 
             
             return self.suitableForBuy, self.suitableForSell
-        
-            
-def checkPosition(cdf : pd.DataFrame, strategy: Strategy):
+               
+def check_position(cdf : pd.DataFrame, strategy: Strategy):
     # suitableForBuy = False
     # suitableForSell = False
     
@@ -417,28 +483,24 @@ def checkPosition(cdf : pd.DataFrame, strategy: Strategy):
         strategyChecker = StrategyChecker.HAMMER()
         suitableForBuy, suitableForSell = strategyChecker.checkData(cdf)
 
-    
-    print(f'suitableForBuy: {suitableForBuy}')
-    print(f'suitableForSell: {suitableForSell}')
     return suitableForBuy, suitableForSell
 
-def calculateAmount(total_balance,usdt,current_price,trade_percentage_current):
+def _calculateAmount(total_balance,usdt,current_price,trade_percentage_current):
     amount_usdt = total_balance * trade_percentage_current / 100
     if amount_usdt > usdt:
         amount_usdt = usdt
     amount = amount_usdt / current_price
     return amount
-
     
-def buyPair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance, usdt_balance):
+def buy_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance, usdt_balance):
     global buyPositionsNumber,PAIR_MIN_TRADE_USDT
     print("\033[92m \033[1m{}\033[00m" .format(f"buy opportunity!\n"))
 
     buyPositionsNumber += 1
-    res = bingx_client.spot.market.get_k_line_data(pair.pairName, interval.value)
+    # res = bingx_client.spot.market.get_k_line_data(pair.pairName, interval.value)
     # last_price = float(res['close'])
-    last_price = res[0][1]
-    amountToBuy = calculateAmount(total_balance,usdt_balance,last_price,pair.buy_percentage_current)
+    last_price = pair.get_latest_price()
+    amountToBuy = _calculateAmount(total_balance,usdt_balance,last_price,pair.buy_percentage_current)
        
     if amountToBuy * last_price > PAIR_MIN_TRADE_USDT:
 
@@ -454,17 +516,16 @@ def buyPair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance, 
             print("\tUSDT balance lower than minimum for buying!\n")
             return 0, pair.buy_percentage_current
         
-
-def sellPair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance,pair_balance):
+def sell_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance,pair_balance):
     global sellPositionsNumber,PAIR_MIN_TRADE_USDT,DEBUG_MODE
+    sellPositionsNumber += 1
     print("\033[92m \033[1m{}\033[00m" .format(f"sell opportunity!\n"))  
 
-    print(f'current sell percentage: {pair.sell_percentage_current}')
-    res = bingx_client.spot.market.get_k_line_data(pair.pairName, interval.value)
-    # last_price = float(res['close'])
-    last_price = res[0][1]
-    pair_value_as_usdt = pair_balance * last_price
-    amountToSell = calculateAmount(total_balance, pair_value_as_usdt, last_price, pair.sell_percentage_current)
+    if DEBUG_MODE:
+        print(f'current sell percentage: {pair.sell_percentage_current}')
+    last_price = pair.get_latest_price()
+    pair_value_as_usdt = get_pair_value(bingx_client,pair,pair_balance)
+    amountToSell = _calculateAmount(total_balance, pair_value_as_usdt, last_price, pair.sell_percentage_current)
 
 
     if amountToSell * last_price > PAIR_MIN_TRADE_USDT:
@@ -478,11 +539,11 @@ def sellPair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance,
         print("\tpair balance lower than minumum for selling!\n")
         return 0, pair.sell_percentage_current
 
-def calibreTime(interval: Interval):
+def calibre_time(interval: Interval):
     current_time = time.time()
     print(f'current time: {time.ctime(current_time)}')
     current_time *= 1000
-    intervalAsMiliSeconds = getIntervalAsMiliSeconds(interval)
+    intervalAsMiliSeconds = _getIntervalAsMiliSeconds(interval)
     timePassed = current_time % intervalAsMiliSeconds # also as miliseconds
     sleep_time = intervalAsMiliSeconds + 1000 - timePassed
     print(f'need to sleep {sleep_time:.2f} miliseconds ({sleep_time / 1e3 // 60} minutes\
