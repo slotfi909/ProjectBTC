@@ -1,0 +1,3 @@
+bingX-connector-python
+py-bingx
+python-bingx
