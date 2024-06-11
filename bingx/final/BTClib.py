@@ -188,6 +188,25 @@ def read_pairs_from_file(fileAddress: str) -> list:
 
     return pairs
 
+def read_interval_from_file(fileAddress: str) -> list:
+    VALID_INTERVALS = ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"]
+    with open(fileAddress, 'r') as intervalFile:
+        interval_str = intervalFile.readline()
+    interval_stripped = interval_str.strip()
+    assert (interval_stripped in VALID_INTERVALS), f"given interval in file  {fileAddress} is not a valid one"
+
+    # iterate through each interval and see whetehr it matches
+    for enum_instance in Interval:
+        if enum_instance.value == interval_stripped:
+            enum_result = enum_instance
+            break
+    
+    return enum_result
+
+
+
+
+
 def save_to_logs():
     global old_date, logFile
 

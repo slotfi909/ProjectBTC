@@ -10,7 +10,8 @@ api_key = "SbyekABHMR0SyrIQKTqU14sExh5m40sV5a6jaBenI26u5SDm8z4gGzQCLamCp6Ww2uJyV
 pairs = BTClib.read_pairs_from_file('./pairs.txt')
 
 # set interval
-interval = BTClib.Interval.MINUTELY_THREEMINUTE
+# interval = BTClib.Interval.MINUTELY_THREEMINUTE
+interval = BTClib.read_interval_from_file("./interval.txt")
 bingx_client = BTClib.BingX(api_key=api_key, secret_key=secret_key)
 
 

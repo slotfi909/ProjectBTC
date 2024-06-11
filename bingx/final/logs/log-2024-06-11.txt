@@ -1,0 +1,34 @@
+current time: Tue Jun 11 15:31:32 2024
+need to sleep 88206.30 miliseconds (1.0 minutes and 28.21 seconds) to get in line with correct time!
+
+sleeping...
+
+======================================================
+======================================================
+current time: Tue Jun 11 15:31:52 2024
+need to sleep 68828.48 miliseconds (1.0 minutes and 8.83 seconds) to get in line with correct time!
+
+sleeping...
+
+======================================================
+======================================================
+current time: Tue Jun 11 15:32:12 2024
+need to sleep 48443.35 miliseconds (0.0 minutes and 48.44 seconds) to get in line with correct time!
+
+sleeping...
+
+======================================================
+======================================================
+current time: Tue Jun 11 19:43:33 2024
+need to sleep 87874.10 miliseconds (1.0 minutes and 27.87 seconds) to get in line with correct time!
+
+sleeping...
+
+======================================================
+======================================================
+Traceback (most recent call last):
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/finalBTC.py", line 32, in <module>
+    BTClib.calibre_time(interval)
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/BTClib.py", line 614, in calibre_time
+    time.sleep(sleep_time / 1e3)
+KeyboardInterrupt
