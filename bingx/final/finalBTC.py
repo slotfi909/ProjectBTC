@@ -27,7 +27,7 @@ BTClib.cancel_previous_orders(bingx_client)
 
 while(True):
     
-    BTClib.save_to_logs()
+    # BTClib.save_to_logs()
 
     BTClib.calibre_time(interval)
     
@@ -65,20 +65,18 @@ while(True):
             print(f'suitableForBuy: {suitableForBuy}')
             print(f'suitableForSell: {suitableForSell}')
 
-            res = 0
             balances_changed = False
 
             if suitableForSell:
-                res, pair.sell_percentage_current = BTClib.sell_pair(bingx_client,pair,interval,total_balance,pair_balance,limit_price)
+                market_res, limit_res, pair.sell_percentage_current = BTClib.sell_pair(bingx_client,pair,interval,total_balance,pair_balance,limit_price)
                 balances_changed = True
 
             if suitableForBuy:
-                res, pair.buy_percentage_current = BTClib.buy_pair(bingx_client,pair,interval,total_balance,usdt_balance,limit_price)
+                market_res, limit_res, pair.buy_percentage_current = BTClib.buy_pair(bingx_client,pair,interval,total_balance,usdt_balance,limit_price)
                 balances_changed = True
 
 
-            if res != 0:
-                # print(f"order result:\n{res}\n")
+            if market_res == True or limit_res == True:
                 if suitableForBuy:
                     pair.sell_percentage_current = BTClib.sell_percentage_init
                     print('sell percentage successfully reset')

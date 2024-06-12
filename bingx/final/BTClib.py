@@ -7,10 +7,10 @@ from bingX.spot import types
 from aenum import Enum, NoAlias
 from datetime import date
 import sys
+import os
 ###
-DEBUG_MODE = False
+DEBUG_MODE = True
 
-ordertype_is_set = False
 old_date = ''
 logFile = ''
 ###
@@ -179,6 +179,10 @@ def calculate_limit_price(cdf):
 
 
 def read_pairs_from_file(fileAddress: str) -> list:
+    if os.path.isfile(fileAddress) == False:
+        with open(fileAddress,'a') as new_pairs_file:
+            new_pairs_file.write('BTC-USDT\n')
+
     with open(fileAddress, 'r') as pairsFile:
         pairs_str = pairsFile.readlines()
     pairs = []
@@ -190,6 +194,11 @@ def read_pairs_from_file(fileAddress: str) -> list:
 
 def read_interval_from_file(fileAddress: str) -> list:
     VALID_INTERVALS = ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"]
+
+    if os.path.isfile(fileAddress) == False:
+        with open(fileAddress,'a') as new_interval_file:
+            new_interval_file.write('4h\n')
+ 
     with open(fileAddress, 'r') as intervalFile:
         interval_str = intervalFile.readline()
     interval_stripped = interval_str.strip()
@@ -534,24 +543,32 @@ def buy_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance,
     buyPositionsNumber += 1
     last_price = pair.get_latest_price()
     amountToBuy = _calculateAmount(total_balance,usdt_balance,last_price,pair.buy_percentage_current)
-       
-    if amountToBuy * last_price > 2 * PAIR_MIN_TRADE_USDT:
-        market_amount = amountToBuy * (MARKET_BUY_PERCENTAGE) / 100
-        limit_amount = amountToBuy - market_amount
-        order_market_sell = create_market_order(pair,types.Side.BUY,market_amount)
-        order_limit_sell = create_limit_order(pair,types.Side.BUY,market_amount,limit_price)
+    market_amount = amountToBuy * (MARKET_BUY_PERCENTAGE) / 100
+    limit_amount = amountToBuy - market_amount
+
+    market_order_placed, limit_order_placed = False, False
+    if market_amount * last_price > PAIR_MIN_TRADE_USDT: # market order is possible
+        order_market_buy = create_market_order(pair,types.Side.BUY,market_amount)
         if DEBUG_MODE == False:
-            market_order_result = bingx_client.spot.trade.create_order(order_market_sell)
-            limit_order_result = bingx_client.spot.trade.create_order(order_limit_sell)
-            print(f"market order result: {market_order_result}\n limit order result: {limit_order_result}")
-            add_limit_order_to_queue(limit_order_result)
-
-        pair.buy_percentage_current *= learning_rate_buy
-        return market_order_result, pair.buy_percentage_current
-
+            market_order_result = bingx_client.spot.trade.create_order(order_market_buy)
+        market_order_placed = True
     else:
-            print("\tUSDT balance lower than minimum for buying!\n")
-            return 0, pair.buy_percentage_current
+        print("USDT balance lower than minimum for market buy")
+
+    if limit_amount * last_price > PAIR_MIN_TRADE_USDT: # limit order is possible
+        order_limit_buy = create_limit_order(pair,types.Side.BUY,limit_amount,limit_price)
+        if DEBUG_MODE == False:
+            limit_order_result = bingx_client.spot.trade.create_order(order_limit_buy)
+        limit_order_placed = True
+    else:
+        print("USDT balance lower than minimum for limit buy")
+
+    if market_order_placed or limit_order_placed:
+        pair.buy_percentage_current *= learning_rate_buy
+
+    return market_order_placed, limit_order_placed, pair.buy_percentage_current
+    
+
 def check_order_timeout(bingx_client: BingX):
     global _limit_orders
     for order in _limit_orders:
@@ -574,22 +591,29 @@ def sell_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance
     pair_value_as_usdt = get_pair_value(bingx_client,pair,pair_balance)
     amountToSell = _calculateAmount(total_balance, pair_value_as_usdt, last_price, pair.sell_percentage_current)
 
-    if amountToSell * last_price > 2 * PAIR_MIN_TRADE_USDT:
-        market_amount = amountToSell * (MARKET_SELL_PERCENTAGE) / 100
-        limit_amount = amountToSell - market_amount
+    market_amount = amountToSell * (MARKET_SELL_PERCENTAGE) / 100
+    limit_amount = amountToSell - market_amount
+    market_order_placed, limit_order_placed = False, False
+    if market_amount * last_price > PAIR_MIN_TRADE_USDT: # market order is possible
         order_market_sell = create_market_order(pair,types.Side.SELL,market_amount)
-        order_limit_sell = create_limit_order(pair,types.Side.SELL,market_amount,limit_price)
         if DEBUG_MODE == False:
             market_order_result = bingx_client.spot.trade.create_order(order_market_sell)
-            limit_order_result = bingx_client.spot.trade.create_order(order_limit_sell)
-            print(f"market order result: {market_order_result}\n limit order result: {limit_order_result}")
-            add_limit_order_to_queue(limit_order_result)
-
-        pair.sell_percentage_current *= learning_rate_sell
-        return market_order_result, pair.sell_percentage_current
+        market_order_placed = True
     else:
-        print("\tpair balance lower than minumum for selling!\n")
-        return 0, pair.sell_percentage_current
+        print("pair balance lower than minimum for market sell")
+
+    if limit_amount * last_price > PAIR_MIN_TRADE_USDT: # limit order is possible
+        order_limit_sell = create_market_order(pair,types.Side.SELL,limit_amount)
+        if DEBUG_MODE == False:
+            limit_order_result = bingx_client.spot.trade.create_order(order_limit_sell)
+        limit_order_placed = True
+    else:
+        print("pair balance lower than minimum for limit sell")
+
+    if market_order_placed or limit_order_placed:
+        pair.sell_percentage_current *= learning_rate_sell
+
+    return market_order_placed, limit_order_placed, pair.sell_percentage_current
 
 def add_limit_order_to_queue(limit_order_result: dict[str, any]):
     orderId = limit_order_result['orderId']
