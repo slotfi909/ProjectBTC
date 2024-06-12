@@ -9,7 +9,7 @@ from datetime import date
 import sys
 import os
 ###
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 old_date = ''
 logFile = ''
@@ -33,11 +33,11 @@ logFile = ''
 # prevent division by zero
 ###############################
 
-MARKET_BUY_PERCENTAGE = 50
+MARKET_BUY_PERCENTAGE = 40
 LIMIT_BUY_PERCENTAGE = 100 - MARKET_BUY_PERCENTAGE
-MARKET_SELL_PERCENTAGE = 50
+MARKET_SELL_PERCENTAGE = 40
 LIMIT_SELL_PERCENTAGE = 100 - MARKET_SELL_PERCENTAGE
-ORDER_TIMEOUT = 4
+ORDER_TIMEOUT = 10
 
 engulfing_body_condition = 2
 engulfing_first_candle_color_dont_care_buy = True
@@ -52,8 +52,8 @@ shooting_star_tail_to_body_ratio = 0.1
 
 
 communication_max_tries = 5
-buy_percentage_init = 10
-sell_percentage_init = 13
+buy_percentage_init = 20
+sell_percentage_init = 23
 learning_rate_buy = 0.9
 learning_rate_sell = 1.1
 buyPositionsNumber = 0
