@@ -66,7 +66,7 @@ while(True):
             print(f'suitableForSell: {suitableForSell}')
 
             balances_changed = False
-
+            market_res, limit_res = False, False
             if suitableForSell:
                 market_res, limit_res, pair.sell_percentage_current = BTClib.sell_pair(bingx_client,pair,interval,total_balance,pair_balance,limit_price)
                 balances_changed = True
@@ -86,4 +86,8 @@ while(True):
 
         print("\n====================\n")
         sys.stdout.flush()
-        
+    
+    summary_dict = BTClib.get_account_summary(bingx_client)
+
+    BTClib.write_summary(summary_dict, './summary.txt')
+    

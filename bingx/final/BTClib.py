@@ -261,6 +261,46 @@ def get_total_balance(bingx_client: BingX) -> float:
     
     return total_balance
 
+
+
+def write_summary(summary_dict: dict, fileAddress: str):
+    if os.path.isfile(fileAddress) == True:
+        os.remove(fileAddress)
+
+    final_string = ""
+    for key, value in summary_dict.items():
+        final_string += f"{key}: {value}\n"
+    with open(fileAddress, 'a') as summaryFile:
+        summaryFile.write(final_string)
+
+def get_account_summary(bingx_client: BingX) -> dict:
+    if DEBUG_MODE:
+        print("account summary: ")
+    summary_dict = {}
+    
+    total_balance = float(0)
+    res = bingx_client.spot.trade.get_assets()
+    for record in res['balances']:
+        currency_name = record['asset']
+        if currency_name == 'USDT':
+            summary_dict['USDT'] = record['free']
+            total_balance += float(record['free'])
+            continue
+        if currency_name == 'VST':
+            continue
+        if float(record['free']) == 0:
+            continue
+        
+        pairName = currency_name + '-USDT'
+        pair = Pair(pairName)
+        pair.update_latest_price(bingx_client)
+        pair_balance_as_usdt = get_pair_value(bingx_client, pair, float(record['free']))
+        summary_dict[pairName] = [float(record['free']), pair_balance_as_usdt]
+        total_balance += pair_balance_as_usdt
+    summary_dict['total_balance'] = total_balance
+    
+    return summary_dict
+
 def get_pair_balance(bingx_client: BingX,pair: Pair) -> np.longdouble:
     
     currency = pair.extract_currency_name()
