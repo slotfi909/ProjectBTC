@@ -37,13 +37,13 @@ MARKET_BUY_PERCENTAGE = 40
 LIMIT_BUY_PERCENTAGE = 100 - MARKET_BUY_PERCENTAGE
 MARKET_SELL_PERCENTAGE = 40
 LIMIT_SELL_PERCENTAGE = 100 - MARKET_SELL_PERCENTAGE
-ORDER_TIMEOUT = 10
+ORDER_TIMEOUT = 24
 
 engulfing_body_condition = 2
-engulfing_first_candle_color_dont_care_buy = True
-engulfing_first_candle_color_dont_care_sell = True
+engulfing_first_candle_color_dont_care_buy = False
+engulfing_first_candle_color_dont_care_sell = False
 hammer_candle_color_dont_care = False
-shooting_star_candle_color_dont_care = True
+shooting_star_candle_color_dont_care = False
 threesoldiers_body_condition = [1.01,1.02]
 hammer_tail_to_body_ratio = 6
 hammer_head_to_body_ratio = 0.1
@@ -52,8 +52,8 @@ shooting_star_tail_to_body_ratio = 0.1
 
 
 communication_max_tries = 5
-buy_percentage_init = 20
-sell_percentage_init = 23
+buy_percentage_init = 15
+sell_percentage_init = 12
 learning_rate_buy = 0.9
 learning_rate_sell = 1.1
 buyPositionsNumber = 0
@@ -94,7 +94,8 @@ class Pair:
         self.pairName = pairName
         self.buy_percentage_current = buy_percentage_init
         self.sell_percentage_current = sell_percentage_init
-        self.strategies = [Strategy.ENGULFING, Strategy.THREESOLDIERS, Strategy.SHOOTINGSTAR, Strategy.HAMMER]
+        # self.strategies = [Strategy.ENGULFING, Strategy.THREESOLDIERS, Strategy.SHOOTINGSTAR, Strategy.HAMMER]
+        self.strategies = [Strategy.ENGULFING, Strategy.SHOOTINGSTAR, Strategy.HAMMER]
 
     def setPairName(self,pairName: str) -> None:
         self.pairName = pairName
