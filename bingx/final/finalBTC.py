@@ -27,7 +27,7 @@ BTClib.cancel_previous_orders(bingx_client)
 
 while(True):
     
-    # BTClib.save_to_logs()
+    BTClib.save_to_logs()
 
     BTClib.calibre_time(interval)
     
