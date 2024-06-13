@@ -272,6 +272,7 @@ def write_summary(summary_dict: dict, fileAddress: str):
         final_string += f"{key}: {value}\n"
     with open(fileAddress, 'a') as summaryFile:
         summaryFile.write(final_string)
+        summaryFile.write(f"\nlast updated in {time.ctime(time.time())}")
 
 def get_account_summary(bingx_client: BingX) -> dict:
     if DEBUG_MODE:
