@@ -95,13 +95,13 @@ Traceback (most recent call last):
   File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/BTClib.py", line 132, in update_latest_price
     res = bingx_client.spot.market.get_k_line_data(self.pairName,Interval.MINUTELY_ONEMINUTE.value)
           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/bingX/spot/market.py", line 76, in get_k_line_data
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/BTClib.bingX/spot/market.py", line 76, in get_k_line_data
     response = self.__http_manager.get(endpoint, payload)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/bingX/_http_manager.py", line 91, in get
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/BTClib.bingX/_http_manager.py", line 91, in get
     return self._request("GET", endpoint, payload, headers)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/bingX/_http_manager.py", line 58, in _request
+  File "/home/soroush/Desktop/Projects/ProjectBTC/code/bingx/final/BTClib.bingX/_http_manager.py", line 58, in _request
     req = self.__session.get(url)
           ^^^^^^^^^^^^^^^^^^^^^^^
   File "/home/soroush/Desktop/Projects/ProjectBTC/venvBTC/lib/python3.12/site-packages/requests/sessions.py", line 602, in get
