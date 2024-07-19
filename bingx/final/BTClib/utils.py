@@ -100,7 +100,6 @@ def _getIntervalAsMiliSeconds(interval: Interval):
 
     return timeOffset
 
-
 def write_summary(summary_dict: dict, fileAddress: str):
     if os.path.isfile(fileAddress) == True:
         os.remove(fileAddress)
