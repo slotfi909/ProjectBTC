@@ -1,0 +1,36 @@
+utils:
+    calibre_time
+    add_limit_order_to_queue
+    check_order_timeout
+    _calculateAmount -> calculate_margin_and_leverage
+    check_position
+    get_times
+    _getIntervalAsMiliSeconds
+    write_spot_summary -> write_futures_summary
+    save_to_logs_spot -> save_to_logs_futures
+    read_interval_from_file
+    calculate_limit_price
+    read_pairs_from_file
+
+other:
+    all
+
+datatypes:
+    all
+
+constants:
+    all
+
+comm:
+    sell_pair -> sell_pair_futures
+    buy_pair -> buy_pair_futures
+    create_limit_order -> create_limit_order_futures
+    create_market_order -> create_market_order_futures
+    get_pair_history_as_dataframe -> get_pair_history_as_dataframe_futures
+    get_pair_value -> get_pair_value_futures
+    get_account_summary -> get_account_summary_futures
+    .
+    .
+    .
+    all should be replaced!
+

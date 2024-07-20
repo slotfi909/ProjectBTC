@@ -27,7 +27,7 @@ BTClib.cancel_previous_orders(bingx_client)
 
 while(True):
     
-    # BTClib.save_to_logs()
+    # BTClib.save_to_logs_spot()
 
     BTClib.calibre_time(interval)
     
@@ -89,5 +89,5 @@ while(True):
     
     summary_dict = BTClib.get_account_summary(bingx_client)
 
-    BTClib.write_summary(summary_dict, './summary.txt')
+    BTClib.write_spot_summary(summary_dict, './summary.txt')
     

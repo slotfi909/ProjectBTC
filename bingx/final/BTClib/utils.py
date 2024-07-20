@@ -100,7 +100,7 @@ def _getIntervalAsMiliSeconds(interval: Interval):
 
     return timeOffset
 
-def write_summary(summary_dict: dict, fileAddress: str):
+def write_spot_summary(summary_dict: dict, fileAddress: str):
     if os.path.isfile(fileAddress) == True:
         os.remove(fileAddress)
 
@@ -111,7 +111,7 @@ def write_summary(summary_dict: dict, fileAddress: str):
         summaryFile.write(final_string)
         summaryFile.write(f"\nlast updated in {time.ctime(time.time())}")
 
-def save_to_logs():
+def save_to_logs_spot():
     global old_date, logFile
 
     new_date = date.today()

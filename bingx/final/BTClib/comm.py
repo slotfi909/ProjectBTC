@@ -74,7 +74,6 @@ def buy_pair(bingx_client: BingX, pair: Pair, interval: Interval, total_balance,
 
     return market_order_placed, limit_order_placed, pair.buy_percentage_current
 
-
 def create_limit_order(pair: Pair, side: types.Side, amount, price):
     created_order = types.Order(symbol=pair.pairName, side=side,type=types.OrderType.LIMIT,quote_order_qty=amount,quantity=amount, price=price)
     return created_order
@@ -158,7 +157,6 @@ def get_pair_value(bingx_client: BingX,pair: Pair,pair_balance: np.longdouble) -
     if DEBUG_MODE:
         print(f'pair: {pair.pairName}, pair_balance_as_usdt: {pair_balance_as_usdt}')
     return pair_balance_as_usdt
-
 
 def get_account_summary(bingx_client: BingX) -> dict:
     if DEBUG_MODE:
@@ -244,7 +242,6 @@ def get_account_info(bingx_client: BingX,pair: Pair) -> float | np.longdouble:
         print(f'pair balance: {pair_balance}')
     return usdt_balance, pair_balance
 
-
 def cancel_previous_orders(bingx_client: BingX,symbol: str | None = None):
     if DEBUG_MODE == False:
             # print(f'result of cancel previous orders with arg {symbol}:\n{res}')
@@ -258,7 +255,6 @@ def cancel_previous_orders(bingx_client: BingX,symbol: str | None = None):
         print("not canceling any order is debug mode is ON...")
         return
         
-
 def get_total_balance(bingx_client: BingX) -> float:
     total_balance = float(0)
     res = bingx_client.spot.trade.get_assets()

@@ -1,6 +1,7 @@
 ###
 ###############################
 # todo
+# add sensitive info to .env file
 # check pair_min_trade for both market trade and limit trade
 # price is queried two times, once in get_total_balance and then in 
 # do all the selling first the do the buy
