@@ -1,91 +1,69 @@
-# BTClib 💎
+# ProjectBTC
 
-BTClib is an automated trading system for spot cryptocurrencies using the BingX exchange. This project leverages candlestick patterns such as 'bullish engulfing' and 'three soldiers' to make buy or sell decisions.
+Python experiments for candlestick-based cryptocurrency trading on BingX and historical BTC/USDT strategy checks. The exchange runner is in `bingx/final/`; offline simulations and data-collection notebooks are in `strategy_checker/`.
 
-![BTClib Logo](placeholder-for-btclib-logo.png)
+## Features
 
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/BTClib.svg?style=social&label=Star&maxAge=2592000)](https://github.com/yourusername/BTClib/stargazers)
+- Engulfing, Three Soldiers, Hammer, and Shooting Star signal checks in the exchange runner.
+- Spot price and balance queries, market/limit order submission code, and account summaries.
+- CSV-based strategy simulations and exploratory BingX/Binance data collection.
 
-## Table of Contents
-- [Features](#features-✨)
-- [Credits](#credits-🙏)
-- [Dependencies](#dependencies-🔗)
-- [Installation](#installation-⚙️)
-- [Usage](#usage-▶️)
-- [How It Works](#how-it-works-🔍)
-- [Contributing](#contributing-🤝)
-- [License](#license-📄)
+## Installation
 
-## Features ✨
+With Python 3.10-3.12, run from the repository root:
 
-- 🤖 Automated trading of spot cryptocurrencies on BingX exchange
-- 📊 Utilizes candlestick patterns for trade decisions
-- 💰 Supports multiple pre-defined currencies
-- 🔄 Real-time price querying
-
-## Credits 🙏
-
-This project is based on and utilizes [python-bingx](https://github.com/niewiemczego/python-bingx), a Python connector for BingX exchange API endpoints. We extend our heartfelt thanks to the creators and contributors of python-bingx for their excellent work, which forms the foundation of our project.
-
-## Dependencies 🔗
-
-The main dependency for this project is:
-- [python-bingx](https://github.com/niewiemczego/python-bingx): A Python connector for BingX exchange API endpoints 🐍
-
-## Installation ⚙️
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/BTClib.git
-   cd BTClib
-   ```
-
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-3. Set up your BingX API credentials (refer to the Configuration section).
-
-![Installation Process](placeholder-for-installation-gif.gif)
-
-## Usage ▶️
-
-To start the auto-trading system:
-
-```
-python main.py
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r bingx/final/requirements.txt
 ```
 
-Make sure to configure your trading parameters and API credentials before running the script.
+The BingX connector is bundled with the project; a separate `python-bingx` installation is not required. The requirements include `python-dotenv` for loading local credentials.
 
-![BTClib in Action](placeholder-for-btclib-in-action.png)
+## Configuration
 
-## How It Works 🔍
+Use [`.env.example`](.env.example) as the template for a `.env` file in the repository root. Set both credential variables:
 
-1. **Price Querying** 📡: The system periodically queries the prices of pre-defined cryptocurrencies using the BingX API.
+- `BINGX_API_KEY`: your BingX API key.
+- `BINGX_SECRET_KEY`: the corresponding secret key.
 
-2. **Pattern Recognition** 🕵️: It analyzes the recent price data to identify candlestick patterns such as:
-   - Bullish Engulfing 🟩
-   - Three Soldiers ⚔️⚔️⚔️
-   - (Add other patterns used in your system)
+Alternatively, export these variables in the shell before starting Python or Jupyter. Existing environment variables take precedence over `.env`. The exchange runner and data-gathering notebook reject missing or blank credentials before creating an API client. Local `.env` files are ignored by Git; the sample contains no credentials.
 
-3. **Trade Execution** 💸: Based on the identified patterns, the system makes decisions to buy or sell the cryptocurrency.
+**Credential warning:** Previously committed keys remain in Git history. Revoke or rotate any real exposed keys and do not commit replacement credentials.
 
-4. **Position Management** 📈: The system manages open positions, including setting stop-loss and take-profit levels.
+## Exchange Runner
 
-![Trading Process Diagram](placeholder-for-trading-process-diagram.png)
+Review these files before starting:
 
-## Contributing 🤝
+- `bingx/final/pairs.txt`: one trading pair per line, currently `BTC-USDT`.
+- `bingx/final/interval.txt`: candle interval, currently `3m`.
+- `bingx/final/BTClib/constants.py`: signal thresholds and order-sizing parameters.
 
-Contributions to BTClib are welcome! Please feel free to submit a Pull Request.
+`DEBUG_MODE` in `bingx/final/BTClib/other.py` defaults to `True`, suppressing order submission and startup cancellation. It still queries the live API and account balances; this is not a sandbox. Setting it to `False` enables real orders and cancels all open spot orders at startup. Review the trading logic before using a funded account.
 
-## License 📄
+After configuring credentials locally, run from `bingx/final/` so relative paths resolve correctly:
 
-This project is licensed under the [MIT License](LICENSE).
+```bash
+cd bingx/final
+python finalBTC.py
+```
 
-## Disclaimer ⚠️
+The runner loops until interrupted with `Ctrl+C` and overwrites `summary.txt` with account balances after each cycle.
 
-Cryptocurrency trading carries a high level of risk and may not be suitable for all investors. Before deciding to trade cryptocurrencies, you should carefully consider your investment objectives, level of experience, and risk appetite.
+## Offline Strategy Checks
 
-Happy Trading! 🎉🚀
+`strategy_checker/strategy_checker_spot.py` simulates trades without submitting exchange orders. Historical CSV data is not included. Set its `file` variable to your data path and review the CSV-loading logic: it expects `Date`, `Open`, `High`, `Low`, and `Close` columns, newest-first rows, and, by default, an extra row before the column header.
+
+From the repository root, with the virtual environment active:
+
+```bash
+python -m pip install matplotlib
+cd strategy_checker
+python strategy_checker_spot.py
+```
+
+The default CSV path is `../../data/csv/Binance_BTCUSDT_2024_minute_2024_04_02.csv`, relative to the working directory. The notebooks can be opened with Jupyter (`python -m pip install notebook`). `dataGatherer.ipynb` additionally imports `binance_historical_data` and uses the same credential variables as the runner. Start its kernel in the repository root or `strategy_checker/` so it can find the root `.env`. It makes network and authenticated account requests, so review its cells before running. The simulation script and notebook differ, and their results are not validated performance benchmarks.
+
+## License
+
+The bundled [python-bingx](https://github.com/niewiemczego/python-bingx) connector identifies itself as MIT-licensed in its metadata. No project-level license file is included.

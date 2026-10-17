@@ -2,9 +2,16 @@ import BTClib
 import time
 import sys
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 
-secret_key = "WqP5txrWtmbGcMND5GjFiBZICth5nZFIXYKEPqKitRl7xOHVGOFzNo8yNCLQUmK4guPTNgV4nwKLT0aD5iYIg"
-api_key = "SbyekABHMR0SyrIQKTqU14sExh5m40sV5a6jaBenI26u5SDm8z4gGzQCLamCp6Ww2uJyVjyhJQESk4Gt5jA"
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+api_key = (os.getenv("BINGX_API_KEY") or "").strip()
+secret_key = (os.getenv("BINGX_SECRET_KEY") or "").strip()
+if not api_key or not secret_key:
+    raise RuntimeError(
+        "Set BINGX_API_KEY and BINGX_SECRET_KEY in the environment or ProjectBTC/.env."
+    )
 
 # prepairing pairs
 pairs = BTClib.read_pairs_from_file('./pairs.txt')
@@ -90,4 +97,3 @@ while(True):
     summary_dict = BTClib.get_account_summary(bingx_client)
 
     BTClib.write_spot_summary(summary_dict, './summary.txt')
-    
